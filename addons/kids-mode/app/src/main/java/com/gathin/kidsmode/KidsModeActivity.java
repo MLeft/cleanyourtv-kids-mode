@@ -22,6 +22,7 @@ public final class KidsModeActivity extends Activity {
     private TextView sessionChoice;
     private TextView waitChoice;
     private TextView dailyChoice;
+    private TextView libraryGraceChoice;
     private TextView serviceChoice;
     private TextView usageText;
 
@@ -76,6 +77,7 @@ public final class KidsModeActivity extends Activity {
         sessionChoice = findViewById(R.id.sessionLimitChoice);
         waitChoice = findViewById(R.id.waitLimitChoice);
         dailyChoice = findViewById(R.id.dailyLimitChoice);
+        libraryGraceChoice = findViewById(R.id.libraryGraceChoice);
         serviceChoice = findViewById(R.id.serviceChoice);
         usageText = findViewById(R.id.kidsUsageText);
 
@@ -89,6 +91,7 @@ public final class KidsModeActivity extends Activity {
         dailyChoice.setOnClickListener(v -> showChoice(R.string.kids_daily_limit,
                 KidsStore.DAILY_OPTIONS, KidsStore.dailyLimitMin(this),
                 value -> KidsStore.setDailyLimit(this, value)));
+        libraryGraceChoice.setOnClickListener(v -> showGraceChoice());
         findViewById(R.id.changePinChoice).setOnClickListener(v -> promptNewPin(null));
         findViewById(R.id.resetUsageChoice).setOnClickListener(v -> confirmReset());
         serviceChoice.setOnClickListener(v -> openAccessibility());
@@ -138,6 +141,8 @@ public final class KidsModeActivity extends Activity {
         sessionChoice.setText(getString(R.string.kids_session_limit_state, formatMinutes(session)));
         waitChoice.setText(getString(R.string.kids_wait_limit_state, formatMinutes(wait)));
         dailyChoice.setText(getString(R.string.kids_daily_limit_state, formatMinutes(daily)));
+        libraryGraceChoice.setText(getString(R.string.kids_library_grace_state,
+                formatGrace(KidsStore.libraryGraceMin(this))));
         waitChoice.setEnabled(session > 0);
         waitChoice.setAlpha(session > 0 ? 1f : 0.5f);
 
@@ -158,6 +163,32 @@ public final class KidsModeActivity extends Activity {
     private String formatMinutes(int minutes) {
         return minutes <= 0 ? getString(R.string.kids_unlimited)
                 : getString(R.string.kids_minutes, minutes);
+    }
+
+    private String formatGrace(int minutes) {
+        return minutes <= 0 ? getString(R.string.kids_off) : getString(R.string.kids_minutes, minutes);
+    }
+
+    private void showGraceChoice() {
+        int[] options = KidsStore.LIBRARY_GRACE_OPTIONS;
+        String[] labels = new String[options.length];
+        int checked = 0;
+        int current = KidsStore.libraryGraceMin(this);
+        for (int i = 0; i < options.length; i++) {
+            labels[i] = options[i] <= 0 ? getString(R.string.kids_off)
+                    : getString(R.string.kids_minutes, options[i]);
+            if (options[i] == current) checked = i;
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle(R.string.kids_library_grace)
+                .setSingleChoiceItems(labels, checked, (d, which) -> {
+                    d.dismiss();
+                    KidsStore.setLibraryGraceMin(this, options[which]);
+                    refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        showCentered(dialog, 560, null);
     }
 
     private void showChoice(int title, int[] options, int current, Consumer<Integer> onPick) {

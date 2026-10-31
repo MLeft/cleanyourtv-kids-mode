@@ -28,6 +28,8 @@ final class KidsStore {
     static final int[] WAIT_OPTIONS = {5, 10, 15, 20, 30, 45, 60};
     static final int[] DAILY_OPTIONS = {0, 30, 60, 90, 120, 180, 240};
     static final int[] OVERRIDE_OPTIONS = {10, 15, 20, 30, 60};
+    static final int DEFAULT_LIBRARY_GRACE_MIN = 5;
+    static final int[] LIBRARY_GRACE_OPTIONS = {0, 1, 5, 10, 15};
 
     static final int LOCK_NONE = 0;
     static final int LOCK_SESSION = 1;
@@ -51,6 +53,8 @@ final class KidsStore {
     private static final String KEY_LAST_OFF = "last_off_wall";
     private static final String KEY_COOLDOWN_UNTIL = "cooldown_until_wall";
     private static final String KEY_OVERRIDE_REMAINING = "override_remaining_ms";
+    private static final String KEY_LIBRARY_GRACE_MIN = "library_grace_min";
+    private static final String KEY_LIBRARY_GRACE_UNTIL = "library_grace_until";
 
     /** Set while the settings screen is in front; the guard neither counts nor locks then. */
     static volatile boolean settingsOpen;
@@ -73,7 +77,9 @@ final class KidsStore {
     }
 
     static void setEnabled(Context c, boolean enabled) {
-        prefs(c).edit().putBoolean(KEY_ENABLED, enabled).apply();
+        SharedPreferences.Editor editor = prefs(c).edit().putBoolean(KEY_ENABLED, enabled);
+        if (!enabled) editor.putLong(KEY_LIBRARY_GRACE_UNTIL, 0);
+        editor.apply();
     }
 
     static int sessionLimitMin(Context c) {
@@ -100,6 +106,28 @@ final class KidsStore {
         prefs(c).edit().putInt(KEY_DAILY_MIN, Math.max(0, minutes)).apply();
     }
 
+    static int libraryGraceMin(Context c) {
+        return Math.max(0, prefs(c).getInt(KEY_LIBRARY_GRACE_MIN, DEFAULT_LIBRARY_GRACE_MIN));
+    }
+
+    static void setLibraryGraceMin(Context c, int minutes) {
+        prefs(c).edit().putInt(KEY_LIBRARY_GRACE_MIN, Math.max(0, minutes)).apply();
+    }
+
+    static boolean isLibraryGraceActive(Context c) {
+        return isEnabled(c) && System.currentTimeMillis() < prefs(c).getLong(KEY_LIBRARY_GRACE_UNTIL, 0);
+    }
+
+    static void grantLibraryGrace(Context c) {
+        int minutes = libraryGraceMin(c);
+        prefs(c).edit().putLong(KEY_LIBRARY_GRACE_UNTIL,
+                minutes > 0 ? System.currentTimeMillis() + minutes * 60_000L : 0).apply();
+    }
+
+    static void clearLibraryGrace(Context c) {
+        prefs(c).edit().putLong(KEY_LIBRARY_GRACE_UNTIL, 0).apply();
+    }
+
     static void setPin(Context c, String pin) {
         byte[] salt = new byte[16];
         new SecureRandom().nextBytes(salt);
@@ -109,6 +137,7 @@ final class KidsStore {
                 .putString(KEY_PIN_HASH, hash(salt, pin))
                 .putInt(KEY_FAIL_COUNT, 0)
                 .putLong(KEY_FAIL_UNTIL, 0)
+                .putLong(KEY_LIBRARY_GRACE_UNTIL, 0)
                 .apply();
     }
 
@@ -269,8 +298,10 @@ final class KidsStore {
                 .putInt(KEY_SESSION_MIN, DEFAULT_SESSION_MIN)
                 .putInt(KEY_WAIT_MIN, DEFAULT_WAIT_MIN)
                 .putInt(KEY_DAILY_MIN, DEFAULT_DAILY_MIN)
+                .putInt(KEY_LIBRARY_GRACE_MIN, DEFAULT_LIBRARY_GRACE_MIN)
                 .putInt(KEY_FAIL_COUNT, 0)
                 .putLong(KEY_FAIL_UNTIL, 0)
+                .putLong(KEY_LIBRARY_GRACE_UNTIL, 0)
                 .putLong(KEY_USED_TODAY, 0)
                 .putLong(KEY_SESSION_USED, 0)
                 .putLong(KEY_LAST_OFF, 0)

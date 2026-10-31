@@ -47,6 +47,9 @@ public final class KidsAdminReceiver extends BroadcastReceiver {
         if (intent.hasExtra("override_seconds")) {
             KidsStore.grantOverrideMs(context, intent.getIntExtra("override_seconds", 10) * 1000L);
         }
+        if (intent.getBooleanExtra("library_grace", false)) {
+            KidsStore.grantLibraryGrace(context);
+        }
         if (intent.getBooleanExtra("open", false)) {
             Intent open = new Intent(context, KidsModeActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

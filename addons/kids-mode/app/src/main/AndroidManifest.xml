@@ -26,6 +26,15 @@
             </intent-filter>
         </activity>
 
+        <!-- The launcher starts this before opening its app library: the parent PIN, or silent OK
+             within the configured grace window. -->
+        <activity
+            android:name=".KidsLibraryAuthActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.KidsAuth" />
+
         <!-- Counts screen-on time and draws the full-screen accessibility overlay. It asks for no
              window content and filters no keys; it only needs to exist and receive screen on/off. -->
         <service

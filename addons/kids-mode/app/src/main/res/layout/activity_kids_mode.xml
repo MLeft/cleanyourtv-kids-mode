@@ -42,6 +42,11 @@
             android:layout_marginTop="10dp" />
 
         <TextView
+            android:id="@+id/libraryGraceChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="10dp" />
+
+        <TextView
             android:id="@+id/changePinChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="18dp"

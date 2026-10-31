@@ -28,6 +28,11 @@
     <string name="kids_hint">电视亮着就计时；关闭电视超过“超时后等待”的时长，再打开算新的一次观看。每日 0 点重置。任何超时锁定都可以输入家长密码临时授权，授权到期后会再次锁定；再次延长需再次验证密码并选择倒计时时长。</string>
     <string name="kids_service_on">守护服务：已开启</string>
     <string name="kids_service_off">守护服务：未开启（点击开启）</string>
+    <string name="kids_auth_title">进入应用库</string>
+    <string name="kids_auth_hint">请验证家长密码；验证后 %1$d 分钟内再次进入应用库无需密码。</string>
+    <string name="kids_auth_hint_always">每次进入应用库都需要家长密码。</string>
+    <string name="kids_library_grace">应用库免授权</string>
+    <string name="kids_library_grace_state">应用库免授权：%1$s</string>
 
     <string name="kids_pin_title">家长密码</string>
     <string name="kids_pin_enter">请输入家长密码</string>

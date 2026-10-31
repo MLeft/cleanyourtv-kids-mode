@@ -6,6 +6,12 @@
         <item name="android:windowAnimationStyle">@null</item>
     </style>
 
+    <style name="Theme.KidsAuth" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
     <style name="SettingsRow">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">52dp</item>
