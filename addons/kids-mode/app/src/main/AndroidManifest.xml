@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <application
+        android:allowBackup="false"
+        android:banner="@drawable/ic_kids"
+        android:icon="@drawable/ic_kids"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.KidsMode">
+
+        <!-- The top-bar entry on the launcher (top_bar_apps) and the app tile in the library. -->
+        <activity
+            android:name=".KidsModeActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|uiMode"
+            android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Counts screen-on time and draws the full-screen accessibility overlay. It asks for no
+             window content and filters no keys; it only needs to exist and receive screen on/off. -->
+        <service
+            android:name=".KidsGuardService"
+            android:exported="true"
+            android:label="@string/guard_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/kids_guard_service" />
+        </service>
+
+        <!-- Exported only to callers holding WRITE_SECURE_SETTINGS (the adb shell), for setup and tests. -->
+        <receiver
+            android:name=".KidsAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.WRITE_SECURE_SETTINGS">
+            <intent-filter>
+                <action android:name="com.gathin.kidsmode.ADMIN" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

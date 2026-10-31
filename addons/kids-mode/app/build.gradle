@@ -1,0 +1,30 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.gathin.kidsmode'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.gathin.kidsmode'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    buildTypes {
+        release {
+            // Sideloaded over ADB, never published. The custom PIN view is referenced from XML,
+            // so keep shrinking off rather than adding keep rules for a ~100 KB app.
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

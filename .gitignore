@@ -21,3 +21,11 @@ bench-results/
 *.aab
 launcher/hs_err_pid*.log
 launcher/replay_pid*.log
+
+# Local build tooling and TV setup artefacts (never part of the project)
+/android-sdk/
+/platform-tools/
+/platform-tools.zip
+/cmdline-tools.zip
+/y.txt
+/backups/

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kids mode</string>
+    <string name="guard_name">Kids mode guard</string>
+    <string name="guard_description">Counts kids-mode screen time and locks the TV when a limit is reached.</string>
+
+    <string name="kids_mode">Kids mode</string>
+    <string name="kids_enabled_choice">Kids mode: %1$s</string>
+    <string name="kids_on">On</string>
+    <string name="kids_off">Off</string>
+    <string name="kids_not_set">PIN not set</string>
+    <string name="kids_session_limit">Session length</string>
+    <string name="kids_wait_limit">Rest after a session</string>
+    <string name="kids_daily_limit">Daily limit</string>
+    <string name="kids_session_limit_state">Session length: %1$s</string>
+    <string name="kids_wait_limit_state">Rest after a session: %1$s</string>
+    <string name="kids_daily_limit_state">Daily limit: %1$s</string>
+    <string name="kids_minutes">%1$d min</string>
+    <string name="kids_unlimited">Unlimited</string>
+    <string name="kids_change_pin">Change parent PIN</string>
+    <string name="kids_reset_usage">Reset today\'s usage</string>
+    <string name="kids_reset_done">Today\'s usage was reset.</string>
+    <string name="kids_reset_confirm_title">Reset today\'s usage?</string>
+    <string name="kids_reset_confirm_message">This clears today\'s used time and any temporary override.</string>
+    <string name="kids_usage">Today: %1$d min used · %2$s left. This session: %3$d min.</string>
+    <string name="kids_usage_unlimited">Today: %1$d min used (no daily limit). This session: %2$d min.</string>
+    <string name="kids_usage_short">%1$d min left today</string>
+    <string name="kids_hint">The timer runs while the TV screen is on. Turning the TV off for at least the rest time starts a new session. The daily total resets at midnight. A parent PIN can grant extra viewing time after any lock, and the same PIN is needed to change these settings.</string>
+    <string name="kids_service_on">Guard service: on</string>
+    <string name="kids_service_off">Guard service: off (tap to enable)</string>
+
+    <string name="kids_pin_title">Parent PIN</string>
+    <string name="kids_pin_enter">Enter the parent PIN</string>
+    <string name="kids_pin_set_title">Set a 4-digit parent PIN</string>
+    <string name="kids_pin_confirm_title">Enter the PIN again</string>
+    <string name="kids_pin_wrong">Wrong PIN</string>
+    <string name="kids_pin_mismatch">The PINs do not match</string>
+    <string name="kids_pin_locked">Too many attempts. Try again in %1$d s.</string>
+    <string name="kids_pin_saved">PIN saved</string>
+    <string name="kids_pin_required">Set a parent PIN first.</string>
+    <string name="kids_delete">Del</string>
+    <string name="kids_ok">OK</string>
+
+    <string name="kids_accessibility_title">Guard service needed</string>
+    <string name="kids_accessibility_message">Turn on “Kids mode guard” in Accessibility, or the TV cannot time or lock kids mode.</string>
+    <string name="kids_open_accessibility">Open Accessibility settings</string>
+
+    <string name="kids_lock_session_title">Session time is up</string>
+    <string name="kids_lock_session_message">Take a break. You can watch again in %1$s.</string>
+    <string name="kids_lock_daily_title">Today\'s viewing time is used up</string>
+    <string name="kids_lock_daily_message">Come back after midnight (in %1$s).</string>
+    <string name="kids_lock_pin_hint">A parent can enter the PIN to allow more time.</string>
+    <string name="kids_override_title">Parent verified</string>
+    <string name="kids_override_pick">Choose extra viewing time</string>
+    <string name="kids_override_minutes">%1$d min</string>
+    <string name="kids_disable">Turn off kids mode</string>
+    <string name="kids_back">Back</string>
+    <string name="kids_overridden">%1$d more minutes allowed.</string>
+    <string name="kids_disabled_toast">Kids mode is off.</string>
+    <string name="kids_enabled_toast">Kids mode is on.</string>
+    <string name="kids_wait_short">Resting</string>
+    <string name="kids_daily_used_up">Daily limit reached</string>
+    <string name="kids_error_wrong">Wrong PIN. Try again.</string>
+</resources>

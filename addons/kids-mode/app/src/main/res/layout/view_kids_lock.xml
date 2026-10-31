@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F2101419"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:gravity="center">
+
+    <LinearLayout
+        android:layout_width="520dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/kids_panel_bg"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/kidsLockTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/kids_lock_session_title"
+            android:textColor="#FFFFFFFF"
+            android:textSize="26sp" />
+
+        <TextView
+            android:id="@+id/kidsLockMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:textColor="#FFCFD8DC"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/kidsLockCountdown"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:textColor="#FFB9E7C7"
+            android:textSize="36sp" />
+
+        <TextView
+            android:id="@+id/kidsLockHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="center"
+            android:text="@string/kids_lock_pin_hint"
+            android:textColor="#FF90A4AE"
+            android:textSize="12sp" />
+
+        <com.gathin.kidsmode.KidsPinView
+            android:id="@+id/kidsPinView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+
+        <LinearLayout
+            android:id="@+id/kidsOverrideMenu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/kidsOverrideTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="@string/kids_override_title"
+                android:textColor="#FFB9E7C7"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/kidsOverridePick"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:text="@string/kids_override_pick"
+                android:textColor="#FFCFD8DC"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/kidsOverride10"
+                style="@style/SettingsRow"
+                android:layout_height="46dp"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text=""
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/kidsOverride15"
+                style="@style/SettingsRow"
+                android:layout_height="46dp"
+                android:layout_marginTop="5dp"
+                android:gravity="center"
+                android:text=""
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/kidsOverride20"
+                style="@style/SettingsRow"
+                android:layout_height="46dp"
+                android:layout_marginTop="5dp"
+                android:gravity="center"
+                android:text=""
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/kidsOverride30"
+                style="@style/SettingsRow"
+                android:layout_height="46dp"
+                android:layout_marginTop="5dp"
+                android:gravity="center"
+                android:text=""
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/kidsOverride60"
+                style="@style/SettingsRow"
+                android:layout_height="46dp"
+                android:layout_marginTop="5dp"
+                android:gravity="center"
+                android:text=""
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/kidsStayLocked"
+                style="@style/SettingsRow"
+                android:layout_height="46dp"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="@string/kids_back"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/kidsDisableMode"
+                style="@style/SettingsRow"
+                android:layout_height="46dp"
+                android:layout_marginTop="5dp"
+                android:gravity="center"
+                android:text="@string/kids_disable"
+                android:textColor="#FFFF8A80"
+                android:textSize="16sp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">儿童模式</string>
+    <string name="guard_name">儿童模式守护</string>
+    <string name="guard_description">儿童模式计时，并在达到时长上限时锁定电视。</string>
+
+    <string name="kids_mode">儿童模式</string>
+    <string name="kids_enabled_choice">儿童模式：%1$s</string>
+    <string name="kids_on">已开启</string>
+    <string name="kids_off">已关闭</string>
+    <string name="kids_not_set">未设置密码</string>
+    <string name="kids_session_limit">单次观看时长</string>
+    <string name="kids_wait_limit">超时后等待</string>
+    <string name="kids_daily_limit">每日总时长</string>
+    <string name="kids_session_limit_state">单次观看时长：%1$s</string>
+    <string name="kids_wait_limit_state">超时后等待：%1$s</string>
+    <string name="kids_daily_limit_state">每日总时长：%1$s</string>
+    <string name="kids_minutes">%1$d 分钟</string>
+    <string name="kids_unlimited">不限</string>
+    <string name="kids_change_pin">修改家长密码</string>
+    <string name="kids_reset_usage">重置今日用时</string>
+    <string name="kids_reset_done">今日用时已重置。</string>
+    <string name="kids_reset_confirm_title">重置今日用时？</string>
+    <string name="kids_reset_confirm_message">将清零今日已看时长和临时授权。</string>
+    <string name="kids_usage">今日已看 %1$d 分钟 · 剩余 %2$s；本次已看 %3$d 分钟。</string>
+    <string name="kids_usage_unlimited">今日已看 %1$d 分钟（每日不限）；本次已看 %2$d 分钟。</string>
+    <string name="kids_usage_short">今日剩余 %1$d 分钟</string>
+    <string name="kids_hint">电视亮着就计时；关闭电视超过“超时后等待”的时长，再打开算新的一次观看。每日 0 点重置。任何超时锁定都可以输入家长密码临时授权，授权到期后会再次锁定；再次延长需再次验证密码并选择倒计时时长。</string>
+    <string name="kids_service_on">守护服务：已开启</string>
+    <string name="kids_service_off">守护服务：未开启（点击开启）</string>
+
+    <string name="kids_pin_title">家长密码</string>
+    <string name="kids_pin_enter">请输入家长密码</string>
+    <string name="kids_pin_set_title">设置 4 位家长密码</string>
+    <string name="kids_pin_confirm_title">再次输入密码</string>
+    <string name="kids_pin_wrong">密码错误</string>
+    <string name="kids_pin_mismatch">两次输入不一致</string>
+    <string name="kids_pin_locked">尝试次数过多，请 %1$d 秒后再试</string>
+    <string name="kids_pin_saved">密码已保存</string>
+    <string name="kids_pin_required">请先设置家长密码。</string>
+    <string name="kids_delete">删除</string>
+    <string name="kids_ok">确定</string>
+
+    <string name="kids_accessibility_title">需要开启守护服务</string>
+    <string name="kids_accessibility_message">请在“无障碍”中开启“儿童模式守护”，否则电视无法计时和锁定儿童模式。</string>
+    <string name="kids_open_accessibility">打开无障碍设置</string>
+
+    <string name="kids_lock_session_title">本次观看时间已用完</string>
+    <string name="kids_lock_session_message">请休息一下，%1$s 后可继续观看。</string>
+    <string name="kids_lock_daily_title">今天的观看时间已用完</string>
+    <string name="kids_lock_daily_message">明天 0 点后可继续（还有 %1$s）。</string>
+    <string name="kids_lock_pin_hint">家长可输入密码临时授权继续观看。</string>
+    <string name="kids_override_title">家长验证成功</string>
+    <string name="kids_override_pick">选择临时授权时长</string>
+    <string name="kids_override_minutes">%1$d 分钟</string>
+    <string name="kids_disable">关闭儿童模式</string>
+    <string name="kids_back">返回</string>
+    <string name="kids_overridden">已临时授权 %1$d 分钟。</string>
+    <string name="kids_disabled_toast">儿童模式已关闭。</string>
+    <string name="kids_enabled_toast">儿童模式已开启。</string>
+    <string name="kids_wait_short">休息中</string>
+    <string name="kids_daily_used_up">今日已用完</string>
+    <string name="kids_error_wrong">密码错误，请重试。</string>
+</resources>
