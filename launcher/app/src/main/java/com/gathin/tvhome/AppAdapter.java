@@ -296,13 +296,19 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             String label = card != null ? card.label : Cards.cleanLabel(
                     appLabels.containsKey(pkg) ? appLabels.get(pkg) : String.valueOf(ri.loadLabel(pm)), pkg);
             if (!seen.add(pkg + '\n' + label)) continue;
-            // Prefer the app's own landscape TV banner; apps without one fall back to the uniform
-            // icon card, so each app keeps the artwork that suits it.
+            // Prefer the app's own landscape TV banner. Without one, draw the app icon on a plate
+            // tinted from it and cache that as a banner (Banners), so a newly installed app still
+            // gets a landscape tile; the icon card is left for icons that cannot be drawn.
             Drawable banner = bundledBanner(appBanners.get(pkg));
-            if (banner == null) banner = iconTiles.contains(pkg) ? iconBanner(ri.loadIcon(pm)) : loadBanner(pm, ri);
-            // The icon is only drawn (and sampled for the glow) when there is no banner, so a tile with a
-            // banner skips loading and decoding it.
-            Drawable icon = banner == null ? ri.loadIcon(pm) : null;
+            if (banner == null && !iconTiles.contains(pkg)) banner = loadBanner(pm, ri);
+            Drawable icon = null;
+            if (banner == null) {
+                icon = ri.loadIcon(pm);
+                banner = iconTiles.contains(pkg)
+                        ? (icon == null ? null : iconBanner(icon))
+                        : Banners.generated(ctx, pm, pkg, icon);
+                if (banner != null) icon = null;
+            }
             if (card != null) {
                 fresh.add(new Entry(Entry.CARD, label, component, banner, icon, card.caption, card.accent));
             } else {

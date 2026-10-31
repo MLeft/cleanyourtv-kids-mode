@@ -7,4 +7,7 @@
     <string name="font_light" translatable="false">@font/outfit_light</string>
     <string name="font_extralight" translatable="false">@font/outfit_extralight</string>
     <string name="font_medium" translatable="false">@font/outfit_medium</string>
+    <!-- Apple-like numerals for the clock and dates: Inter's digits instead of Outfit's geometric ones. -->
+    <string name="font_clock" translatable="false">@font/inter_display</string>
+    <string name="font_numeric" translatable="false">@font/inter_text</string>
 </resources>

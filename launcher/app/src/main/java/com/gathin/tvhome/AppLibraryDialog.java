@@ -8,10 +8,12 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.graphics.Outline;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
@@ -19,6 +21,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -102,6 +105,8 @@ final class AppLibraryDialog {
     private SpringAnimation spring;
     private float scrollOffset;
     private boolean highlightShown;
+    private int restoreFirst = RecyclerView.NO_POSITION;
+    private boolean uninstallReturn;
     private final int catalogWidth;
     private static final int GRID_COLUMNS = 5;
     private final int gridCardWidth;
@@ -220,6 +225,12 @@ final class AppLibraryDialog {
     private final java.util.Set<String> tvPackages = new java.util.HashSet<>();
 
     void refresh() {
+        // Rebuilds in place keep the grid where it was, so pinning or removing a shortcut never
+        // scrolls the viewport away from the card the owner is looking at.
+        RecyclerView.LayoutManager manager = catalog == null ? null : catalog.getLayoutManager();
+        if (manager instanceof LinearLayoutManager) {
+            restoreFirst = ((LinearLayoutManager) manager).findFirstVisibleItemPosition();
+        }
         load(false);
     }
 
@@ -281,22 +292,13 @@ final class AppLibraryDialog {
     private void fill(List<ResolveInfo> catalogue) {
         totalApps = catalogue.size();
         apps = catalogue;
-        Map<String, Boolean> home = new HashMap<>();
-        for (ResolveInfo app : apps) {
-            String pkg = app.activityInfo.packageName;
-            home.put(pkg, onHome.test(pkg));
-        }
         catalogTime = System.currentTimeMillis();
+        // Label order only: pinning an app never moves it, so the grid keeps the same positions
+        // for every opening and every Home toggle.
         Collator collator = Collator.getInstance();
         apps.sort((a, b) -> {
-            String pa = a.activityInfo.packageName, pb = b.activityInfo.packageName;
-            if (selectionMode) return LibraryApps.compareCatalog(home.get(pa), label(a), pa,
-                    home.get(pb), label(b), pb, collator);
-            int priority = LibraryApps.comparePriority(home.get(pa), installTimes.get(pa),
-                    home.get(pb), installTimes.get(pb), catalogTime);
-            if (priority != 0) return priority;
             int byLabel = collator.compare(label(a), label(b));
-            return byLabel != 0 ? byLabel : pa.compareTo(pb);
+            return byLabel != 0 ? byLabel : a.activityInfo.packageName.compareTo(b.activityInfo.packageName);
         });
         showCatalog();
     }
@@ -434,7 +436,10 @@ final class AppLibraryDialog {
         for (int i = 0; i < apps.size(); i++) {
             if (apps.get(i).activityInfo.packageName.equals(selectedPackage)) { position = i; break; }
         }
-        ((LinearLayoutManager) list.getLayoutManager()).scrollToPositionWithOffset(position, 0);
+        int scrollTo = restoreFirst == RecyclerView.NO_POSITION
+                ? position : Math.min(restoreFirst, apps.size() - 1);
+        restoreFirst = RecyclerView.NO_POSITION;
+        ((LinearLayoutManager) list.getLayoutManager()).scrollToPositionWithOffset(scrollTo, 0);
         final int target = position;
         list.post(() -> {
             if (catalog != list || !popup.isShowing()) return;
@@ -468,16 +473,6 @@ final class AppLibraryDialog {
             changed.run();
             fill(new ArrayList<>(apps));
             return;
-        }
-        if (add && catalog != null) {
-            // Advance through missing shortcuts instead of following the newly checked app
-            // into the Home group. Preserve its screen slot when the catalogue is rebuilt.
-            int next = LibraryApps.nextFocus(selectedPosition, apps.size(),
-                    index -> !onHome.test(apps.get(index).activityInfo.packageName));
-            if (next >= 0) {
-                selectedPackage = apps.get(next).activityInfo.packageName;
-                selectedPosition = next;
-            }
         }
         dismissActions();
         changed.run();
@@ -533,6 +528,9 @@ final class AppLibraryDialog {
                 Toast.makeText(activity, activity.getString(R.string.cant_open, label(app)), Toast.LENGTH_SHORT).show();
             }
         });
+        addAction(rows, R.string.library_uninstall, () -> uninstall(app));
+        TextView uninstall = rows.getChildAt(rows.getChildCount() - 1).findViewById(R.id.title);
+        uninstall.setTextColor(0xFFFF8A80);
         int menuWidth = dp(220);
         for (int i = 0; i < rows.getChildCount(); i++) {
             TextView title = rows.getChildAt(i).findViewById(R.id.title);
@@ -558,6 +556,50 @@ final class AppLibraryDialog {
         menuPanel.animate().alpha(1f).scaleY(1f).translationY(0f).setDuration(reducedMotion ? Motion.REDUCED_MS : 220)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
         rows.getChildAt(0).requestFocus();
+    }
+
+    private void uninstall(ResolveInfo app) {
+        String name = label(app);
+        String pkg = app.activityInfo.packageName;
+        uninstallReturn = true;
+        dismissActions();
+        Intent intent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, Uri.parse("package:" + pkg));
+        intent.putExtra(Intent.EXTRA_RETURN_RESULT, false);
+        if (intent.resolveActivity(activity.getPackageManager()) == null) {
+            intent = new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + pkg));
+        }
+        try {
+            activity.startActivity(intent);
+        } catch (ActivityNotFoundException | SecurityException e) {
+            uninstallReturn = false;
+            Toast.makeText(activity,
+                    activity.getString(R.string.library_uninstall_failed, name), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** True once when the library was closed to show the system uninstaller, so Home reopens it after. */
+    boolean takeUninstallReturn() {
+        boolean pending = uninstallReturn;
+        uninstallReturn = false;
+        return pending;
+    }
+
+    String selectedPackageName() { return selectedPackage; }
+
+    int selectedPosition() { return selectedPosition; }
+
+    int firstVisiblePosition() {
+        RecyclerView.LayoutManager manager = catalog == null ? null : catalog.getLayoutManager();
+        return manager instanceof LinearLayoutManager
+                ? ((LinearLayoutManager) manager).findFirstVisibleItemPosition()
+                : RecyclerView.NO_POSITION;
+    }
+
+    /** Home brings the library back after an uninstall at the same scroll row, focused on the same slot. */
+    void restoreOnOpen(String pkg, int position, int first) {
+        if (pkg != null) selectedPackage = pkg;
+        selectedPosition = Math.max(0, position);
+        if (first != RecyclerView.NO_POSITION) restoreFirst = first;
     }
 
     private void addAction(LinearLayout rows, int label, Runnable action) {
@@ -608,6 +650,14 @@ final class AppLibraryDialog {
             ImageView icon = new ImageView(activity);
             icon.setId(R.id.icon);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            // Square logos run edge to edge; round their corners like the platform icon mask, so
+            // every app in the grid shares one shape.
+            icon.setClipToOutline(true);
+            icon.setOutlineProvider(new ViewOutlineProvider() {
+                @Override public void getOutline(View view, Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), dp(14));
+                }
+            });
             content.addView(icon, new LinearLayout.LayoutParams(dp(60), dp(60)));
             TextView name = text("", 15, Color.WHITE);
             name.setId(R.id.title);

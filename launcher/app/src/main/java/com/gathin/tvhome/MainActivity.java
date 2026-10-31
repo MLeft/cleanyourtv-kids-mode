@@ -1,5 +1,7 @@
 package com.gathin.tvhome;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
@@ -102,6 +104,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
 
     private static final int LAUNCHER_SETTINGS_REQUEST = 42;
+    private static final int KIDS_LIBRARY_AUTH_REQUEST = 43;
     /** Sent by QuickSettingsActivity: open Launcher settings from here so Home rebuilds when they close. */
     static final String ACTION_LAUNCHER_SETTINGS = "com.gathin.tvhome.action.LAUNCHER_SETTINGS";
     /** The system input switcher, forwarded here by InputsRequestActivity while handle_view_inputs is on. */
@@ -243,7 +246,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean dockRow;
     /** config single_row: every app in the dock's row, scrolling sideways, no grid below. */
     private boolean singleRow;
-    private int plainGridItemHeight;
+    /** config rows_below_dock and dock_title: the layout pass and the plain-grid parking must agree on them. */
+    private int rowsBelowDock;
+    private boolean dockTitle;
+    /** A reset glide waiting for the focus change's own layout to finish. */
+    private Runnable plainGridResetStart;
+    private ValueAnimator plainGridReset;
     /** The highlight springs past its target (config.xml, focus_overshoot); false goes straight there. */
     private boolean focusOvershoot;
     /** Festive skin from the theme (see Festival); applied while it is active today. */
@@ -441,6 +449,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         reducedMotion = cfg.reducedMotion;
         dockRow = cfg.dockRow;
         singleRow = cfg.singleRow;
+        rowsBelowDock = cfg.rowsBelowDock;
+        dockTitle = cfg.dockTitle;
         focusOvershoot = cfg.focusOvershoot;
         festival = cfg.festival;
         festive = festival.active(LocalDate.now());
@@ -673,13 +683,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // tvOS layout: push the dock row towards the bottom of the screen, leaving room for
         // rows_below_dock grid rows under it; the rest of the grid stays below until you press Down.
-        int rowsBelowDock = cfg.rowsBelowDock;
         grid.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             int h = b - t;
             // Item height follows the tile size, which follows the columns and the rows that must fit (AppAdapter.tileWidthPx).
             int inner = (r - l) - grid.getPaddingLeft() - grid.getPaddingRight();
-            int tileW = AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, cfg.dockTitle, cfg.dockRow, density);
-            int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(tileW), density);
+            int tileW = AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, dockTitle, dockRow, density);
+            // The dock keeps 45dp under the tile, the plain grid 32dp: measuring both with the dock's
+            // spacing parked the plain-grid row a few pixels high and made the reset glide fight the layout.
+            int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(tileW), cfg.dockRow, density);
             int dockRow = itemH + (int) (AppAdapter.DOCK_EXTRA_DP * density);   // item height plus DockDecoration offsets
             int gridRows = itemH * rowsBelowDock;
             // Keep the hero below the header when the library is enabled on a short screen,
@@ -701,6 +712,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
             if (grid.getPaddingTop() != want) {
                 grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
+                // A plain grid keeps its anchor when the padding grows, which scrolls the parked first
+                // row up out of the initial screen; put it back on the new line and move the focus
+                // frame with it once that layout has run.
+                if (!MainActivity.this.dockRow) {
+                    grid.scrollToPosition(0);
+                    grid.post(() -> {
+                        grid.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                            @Override
+                            public void onGlobalLayout() {
+                                grid.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                                refitFocusedTile();
+                            }
+                        });
+                        grid.requestLayout();
+                    });
+                }
                 // A vertical grid parks the dock on the new padding line by scrolling (onTileFocused); a sideways
                 // row cannot scroll vertically, and the layout request made from inside this layout pass is
                 // dropped, so lay the row out again on the next frame. The glass and the title were placed for the
@@ -710,10 +737,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         @Override
                         public void onGlobalLayout() {
                             grid.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                            int pos = Math.max(0, Math.min(lastFocused, adapter.appCount() - 1));
-                            RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
-                            View card = vh == null ? null : vh.itemView.findViewById(R.id.card);
-                            if (card != null && card.isFocused()) onTileFocused(pos, card);
+                            refitFocusedTile();
                         }
                     });
                     grid.requestLayout();
@@ -1045,6 +1069,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         restartIdleClock();
         promptsPaused = false;
+        if (reopenLibrary) {
+            reopenLibrary = false;
+            showAppLibrary(reopenLibraryPackage, reopenLibraryPosition, reopenLibraryFirst);
+        }
         if (grid.getAdapter() == null) grid.setAdapter(adapter);   // dropped by onTrimMemory
         switch (tileRefresh.onResume(packagesChangedSinceRebuild())) {
             case REBUILD:
@@ -1100,6 +1128,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == KIDS_LIBRARY_AUTH_REQUEST) {
+            if (resultCode == RESULT_OK) {
+                showAppLibrary();
+            } else {
+                libraryFromTopBar = false;
+                libraryFromVpnPill = false;
+                libraryFocusPending = false;
+            }
+            return;
+        }
         if (requestCode == LAUNCHER_SETTINGS_REQUEST && resultCode == RESULT_OK
                 && data != null && data.getBooleanExtra(LauncherSettingsActivity.EXTRA_REORDER, false)) {
             getIntent().putExtra(LauncherSettingsActivity.EXTRA_REORDER, true);
@@ -1175,26 +1213,37 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /**
+     * Top padding that parks the first plain-grid row on Home's bottom edge. Same tile and item
+     * measurements as the layout pass below: a few pixels of disagreement made both of them keep
+     * re-padding the grid, which showed up as a jolt when the reset glide started.
+     */
+    private int plainGridParkedPadding() {
+        int h = grid.getHeight();
+        int inner = grid.getWidth() - grid.getPaddingLeft() - grid.getPaddingRight();
+        int tileW = AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, dockTitle, false, density);
+        int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(tileW), false, density);
+        return Math.max(Math.round(AppAdapter.TOP_ROOM_DP * density), h - itemH);
+    }
+
+    /**
      * Plain grid: the first row sits at the bottom of Home and the remaining rows stay below the
      * fold until the viewer scrolls Down. The app list loads after the grid's first layout, so the
      * bounds-only layout listener cannot do this on its own.
      */
+    /** Re-place the focus frame and hero after the grid has laid out at its new scroll position. */
+    private void refitFocusedTile() {
+        if (adapter == null || adapter.appCount() == 0) return;
+        int pos = Math.max(0, Math.min(lastFocused, adapter.appCount() - 1));
+        RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
+        View card = vh == null ? null : vh.itemView.findViewById(R.id.card);
+        if (card != null && card.isFocused()) onTileFocused(pos, card);
+    }
+
     private void fitPlainGridRows() {
         if (dockRow || singleRow || adapter == null || grid == null) return;
-        if (grid.getHeight() == 0 || grid.getChildCount() == 0) return;
+        if (grid.getHeight() == 0 || grid.getWidth() == 0 || grid.getChildCount() == 0) return;
         int count = adapter.appCount();
-        int want = Math.round(AppAdapter.TOP_ROOM_DP * density);
-        if (count > 0) {
-            int itemH = plainGridItemHeight;
-            RecyclerView.ViewHolder first = grid.findViewHolderForAdapterPosition(0);
-            if (first != null && first.itemView.getHeight() > 0) {
-                itemH = first.itemView.getHeight();
-            }
-            if (itemH > 0) {
-                plainGridItemHeight = itemH;
-                want = Math.max(want, grid.getHeight() - itemH);
-            }
-        }
+        int want = plainGridParkedPadding();
         if (grid.getPaddingTop() != want) {
             grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
             if (count > 0) grid.scrollToPosition(0);
@@ -1229,14 +1278,73 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Focus went to the top bar: put the plain grid back to its first-screen position. */
     private void resetPlainGridArrangement() {
         if (dockRow || singleRow || adapter == null || grid == null) return;
-        // Already on the first screen: leave it alone, so moving between top-bar buttons never
-        // bounces the rows below.
-        int offset = grid.computeVerticalScrollOffset();
-        if (offset == 0) return;
-        fitPlainGridRows();
-        grid.stopScroll();
-        // Glide back instead of snapping: the same scroll feel as moving between rows.
-        grid.smoothScrollBy(0, -offset);
+        if (plainGridResetStart != null) {
+            grid.removeCallbacks(plainGridResetStart);
+            plainGridResetStart = null;
+        }
+        // The double Up can reach the bar while the focus change still has a layout to apply:
+        // let that run first, then glide from where the grid actually is.
+        plainGridResetStart = () -> {
+            plainGridResetStart = null;
+            if (grid == null) return;
+            ViewGroup bar = findViewById(R.id.topButtons);
+            View focused = getWindow().getDecorView().findFocus();
+            if (bar == null || focused == null || !isInBar(bar, focused)) return;
+            grid.stopScroll();
+            int padBefore = grid.getPaddingTop();
+            fitPlainGridRows();
+            if (grid.getPaddingTop() != padBefore) return;
+            // Already on the first screen: leave it alone, so moving between top-bar buttons never
+            // bounces the rows below.
+            int offset = grid.computeVerticalScrollOffset();
+            if (offset == 0) return;
+            if (!animations || reducedMotion) {
+                grid.scrollBy(0, -offset);
+                return;
+            }
+            glidePlainGrid();
+        };
+        grid.post(plainGridResetStart);
+    }
+
+    /**
+     * Slow glide back to the parked first row. The distance is read from the first row's own top,
+     * not computeVerticalScrollOffset: RecyclerView rewrites that offset by a whole row when the
+     * anchor changes, so correcting against it made the rows jump while the content was fine.
+     */
+    private void glidePlainGrid() {
+        RecyclerView.ViewHolder row0 = grid.findViewHolderForAdapterPosition(0);
+        if (row0 == null) {
+            int rest = grid.computeVerticalScrollOffset();
+            if (rest != 0) grid.scrollBy(0, -rest);
+            return;
+        }
+        final int distance = grid.getPaddingTop() - row0.itemView.getTop();
+        if (distance <= 0) return;
+        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        animator.setDuration(460);
+        animator.setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f));
+        final int[] applied = {0};
+        animator.addUpdateListener(a -> {
+            int target = Math.round(distance * (float) a.getAnimatedValue());
+            int delta = target - applied[0];
+            if (delta != 0) {
+                applied[0] = target;
+                grid.scrollBy(0, -delta);
+            }
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override public void onAnimationEnd(Animator animation) {
+                if (plainGridReset != animation) return;
+                plainGridReset = null;
+                RecyclerView.ViewHolder parked = grid.findViewHolderForAdapterPosition(0);
+                if (parked == null) return;
+                int rest = grid.getPaddingTop() - parked.itemView.getTop();
+                if (rest != 0) grid.scrollBy(0, -rest);
+            }
+        });
+        plainGridReset = animator;
+        animator.start();
     }
 
     /** True when PackageManager reports apps changed since the last rebuild (one binder call). */
@@ -1770,9 +1878,39 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         libraryFocusPending = false;
         libraryFromTopBar = false;
         libraryFromVpnPill = false;
+        if (requestKidsLibraryAuth()) return;
+        showAppLibrary();
+    }
+
+    /** Ask the kids-mode add-on first: it returns OK immediately outside kids mode or within grace. */
+    private boolean requestKidsLibraryAuth() {
+        Intent auth = new Intent().setComponent(new ComponentName(
+                "com.gathin.kidsmode", "com.gathin.kidsmode.KidsLibraryAuthActivity"));
+        if (getPackageManager().resolveActivity(auth, 0) == null) return false;
+        try {
+            startActivityForResult(auth, KIDS_LIBRARY_AUTH_REQUEST);
+            return true;
+        } catch (ActivityNotFoundException | SecurityException e) {
+            return false;
+        }
+    }
+
+    private void showAppLibrary() {
+        showAppLibrary(null, 0, RecyclerView.NO_POSITION);
+    }
+
+    private void showAppLibrary(String restorePkg, int restorePosition, int restoreFirst) {
         appLibrary = new AppLibraryDialog(this, animations, reducedMotion, appLibrarySelection, libraryOkOpens, adapter::containsPackage, () -> reloadApps(false), () -> {
+            boolean reopen = appLibrary != null && appLibrary.takeUninstallReturn();
+            if (reopen) {
+                reopenLibrary = true;
+                reopenLibraryPackage = appLibrary.selectedPackageName();
+                reopenLibraryPosition = appLibrary.selectedPosition();
+                reopenLibraryFirst = appLibrary.firstVisiblePosition();
+            }
             appLibrary = null;
             openPopup = null;
+            if (reopen) return;
             if (libraryFromTopBar) {
                 libraryFromTopBar = false;
                 btnLibraryTop.requestFocus();
@@ -1790,12 +1928,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (libraryFocusPending && appLibrary == null && hasWindowFocus() && !isFinishing()) focusLibrary();
             });
         }, libraryExcludedApps);
+        appLibrary.restoreOnOpen(restorePkg, restorePosition, restoreFirst);
         openPopup = appLibrary.popup;
         appLibrary.show();
     }
 
     @Override
     public void onTileFocused(int position, View card) {
+        if (plainGridResetStart != null) {
+            grid.removeCallbacks(plainGridResetStart);
+            plainGridResetStart = null;
+        }
+        if (plainGridReset != null) {
+            ValueAnimator running = plainGridReset;
+            plainGridReset = null;
+            running.cancel();
+        }
         lastFocused = position;
         lastFocusedKey = adapter.keyAt(position);
         // Focus restored before the first layout (cold start): the tile has no size yet, and the glass
@@ -2994,6 +3142,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean libraryFromTopBar;
     /** The open library came from the VPN pill (vpn_pill, no VPN app): closing it returns there while the pill still shows. */
     private boolean libraryFromVpnPill;
+    /** The system uninstaller closed the library: reopening it on return keeps uninstalls going one after another. */
+    private boolean reopenLibrary;
+    private String reopenLibraryPackage;
+    private int reopenLibraryPosition;
+    private int reopenLibraryFirst = RecyclerView.NO_POSITION;
 
     /** Turns a labelled top pill into the round TopButtonIcon shape: no text, the icon centred by even padding. */
     private void makeIconOnly(TextView pill) {

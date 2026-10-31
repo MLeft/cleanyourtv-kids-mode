@@ -1,8 +1,6 @@
 package com.gathin.tvhome;
 
 import org.junit.Test;
-import java.text.Collator;
-import java.util.Locale;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -37,35 +35,7 @@ public class LibraryAppsTest {
         assertEquals(1, LibraryApps.nextAfterRemoval(9, 3));
     }
 
-    @Test public void checkedAppsComeFirstAndEachGroupCanUseLabelOrder() {
-        assertTrue(LibraryApps.compareHomeGroup(true, false) < 0);
-        assertTrue(LibraryApps.compareHomeGroup(false, true) > 0);
-        assertEquals(0, LibraryApps.compareHomeGroup(true, true));
-        assertEquals(0, LibraryApps.compareHomeGroup(false, false));
-        Collator alphabet = Collator.getInstance(Locale.ENGLISH);
-        assertTrue(LibraryApps.compareCatalog(true, "Zeta", "pkg.zeta",
-                false, "Alpha", "pkg.alpha", alphabet) < 0);
-        assertTrue(LibraryApps.compareCatalog(true, "Alpha", "pkg.alpha",
-                true, "Zeta", "pkg.zeta", alphabet) < 0);
-        assertTrue(LibraryApps.compareCatalog(false, "Alpha", "pkg.alpha",
-                false, "Zeta", "pkg.zeta", alphabet) < 0);
-    }
-
     private static final long DAY = 24L * 60 * 60 * 1000;
-
-    @Test public void missingShortcutsComeBeforeHomeAppsEvenWhenTheHomeAppIsNewer() {
-        long now = 100 * DAY;
-        assertTrue(LibraryApps.comparePriority(false, DAY, true, now, now) < 0);
-        assertTrue(LibraryApps.comparePriority(true, now, false, DAY, now) > 0);
-    }
-
-    @Test public void recentMissingAppsComeFirstButOlderAppsAndHomeAppsUseLabelOrder() {
-        long now = 100 * DAY;
-        assertTrue(LibraryApps.comparePriority(false, now, false, now - DAY, now) < 0);
-        assertTrue(LibraryApps.comparePriority(false, now - DAY, false, DAY, now) < 0);
-        assertEquals(0, LibraryApps.comparePriority(false, DAY, false, 2 * DAY, now));
-        assertEquals(0, LibraryApps.comparePriority(true, now, true, DAY, now));
-    }
 
     @Test public void recentMeansFirstInstalledWithinSevenDaysAndNotAnUnknownOrFutureDate() {
         long now = 100 * DAY;
@@ -99,23 +69,6 @@ public class LibraryAppsTest {
         assertFalse(LibraryApps.visible(false, false, true, true));
         assertTrue(LibraryApps.visible(false, false, true, false));
         assertTrue(LibraryApps.visible(true, false, false, false));
-    }
-
-    @Test public void addingAdvancesPastCheckedAppsToTheNextMissingShortcut() {
-        assertEquals(3, LibraryApps.nextFocus(1, 5, index -> index == 3 || index == 4));
-        assertEquals(0, LibraryApps.nextFocus(4, 5, index -> index == 0 || index == 2));
-    }
-
-    @Test public void addingTheLastMissingShortcutKeepsANearbyCardInsteadOfJumpingToTheStart() {
-        assertEquals(3, LibraryApps.nextFocus(2, 5, index -> false));
-        assertEquals(3, LibraryApps.nextFocus(4, 5, index -> false));
-        assertEquals(0, LibraryApps.nextFocus(0, 1, index -> { fail("No other card to inspect"); return true; }));
-        assertEquals(-1, LibraryApps.nextFocus(0, 0, index -> { fail("Empty catalogue"); return true; }));
-    }
-
-    @Test public void staleFocusIsClampedAfterAnAppRemoval() {
-        assertEquals(1, LibraryApps.nextFocus(9, 3, index -> index == 1));
-        assertEquals(1, LibraryApps.nextFocus(-1, 3, index -> index == 1));
     }
 
     @Test public void choicesRoundTripInStableOrderIncludingAnEmptyList() {
