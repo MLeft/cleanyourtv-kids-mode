@@ -243,6 +243,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean dockRow;
     /** config single_row: every app in the dock's row, scrolling sideways, no grid below. */
     private boolean singleRow;
+    private int plainGridItemHeight;
     /** The highlight springs past its target (config.xml, focus_overshoot); false goes straight there. */
     private boolean focusOvershoot;
     /** Festive skin from the theme (see Festival); applied while it is active today. */
@@ -645,6 +646,31 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         adapter.setSavedOrder(Order.ranks(savedOrder, dockApps), Order.docked(savedOrder, dockApps));
         grid.setAdapter(adapter);
 
+        // Plain grid: a little air between rows keeps the second row fully below the fold when the
+        // first row is parked at the bottom, and keeps the row glide readable while scrolling.
+        if (!dockRow) {
+            grid.addItemDecoration(new RecyclerView.ItemDecoration() {
+                @Override
+                public void getItemOffsets(@NonNull Rect outRect, @NonNull View view,
+                                           @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+                    outRect.bottom = Math.round(20 * density);
+                }
+            });
+        }
+
+        // Leaving the app rows for the top bar returns the plain grid to its opening state: one row at
+        // the bottom (or rows at the top) with the App library pill below the fold again.
+        ViewGroup topBar = findViewById(R.id.topButtons);
+        if (topBar != null) {
+            getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
+                if (newFocus != null && isInBar(topBar, newFocus)
+                        && (oldFocus == null || !isInBar(topBar, oldFocus))) {
+                    hideGridChromeNow();
+                    resetPlainGridArrangement();
+                }
+            });
+        }
+
         // tvOS layout: push the dock row towards the bottom of the screen, leaving room for
         // rows_below_dock grid rows under it; the rest of the grid stays below until you press Down.
         int rowsBelowDock = cfg.rowsBelowDock;
@@ -668,6 +694,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // A single row never shows the names under its tiles (the title above the row names the app), so the
             // 7dp gap and 22dp label item_app.xml keeps for them would only lift the row: sit it that much lower.
             if (singleRow && !cfg.alwaysShowNames) want += (int) (29 * density);
+            // dock_row false: the first row of apps always sits at the bottom of Home; the remaining
+            // rows stay below the fold and appear only when the viewer scrolls Down.
+            if (!MainActivity.this.dockRow && adapter != null && adapter.appCount() > 0) {
+                want = Math.max(want, h - itemH);
+            }
             if (grid.getPaddingTop() != want) {
                 grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
                 // A vertical grid parks the dock on the new padding line by scrolling (onTileFocused); a sideways
@@ -1143,6 +1174,71 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
+    /**
+     * Plain grid: the first row sits at the bottom of Home and the remaining rows stay below the
+     * fold until the viewer scrolls Down. The app list loads after the grid's first layout, so the
+     * bounds-only layout listener cannot do this on its own.
+     */
+    private void fitPlainGridRows() {
+        if (dockRow || singleRow || adapter == null || grid == null) return;
+        if (grid.getHeight() == 0 || grid.getChildCount() == 0) return;
+        int count = adapter.appCount();
+        int want = Math.round(AppAdapter.TOP_ROOM_DP * density);
+        if (count > 0) {
+            int itemH = plainGridItemHeight;
+            RecyclerView.ViewHolder first = grid.findViewHolderForAdapterPosition(0);
+            if (first != null && first.itemView.getHeight() > 0) {
+                itemH = first.itemView.getHeight();
+            }
+            if (itemH > 0) {
+                plainGridItemHeight = itemH;
+                want = Math.max(want, grid.getHeight() - itemH);
+            }
+        }
+        if (grid.getPaddingTop() != want) {
+            grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
+            if (count > 0) grid.scrollToPosition(0);
+            grid.requestLayout();
+            if (count > 0) {
+                grid.post(() -> {
+                    grid.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                        @Override
+                        public void onGlobalLayout() {
+                            grid.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                            int pos = Math.max(0, Math.min(lastFocused, adapter.appCount() - 1));
+                            RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
+                            View card = vh == null ? null : vh.itemView.findViewById(R.id.card);
+                            if (card != null && card.isFocused()) onTileFocused(pos, card);
+                        }
+                    });
+                    grid.requestLayout();
+                });
+            }
+        }
+    }
+
+    private static boolean isInBar(ViewGroup bar, View view) {
+        for (View current = view; current != null; ) {
+            if (current == bar) return true;
+            android.view.ViewParent parent = current.getParent();
+            current = parent instanceof View ? (View) parent : null;
+        }
+        return false;
+    }
+
+    /** Focus went to the top bar: put the plain grid back to its first-screen position. */
+    private void resetPlainGridArrangement() {
+        if (dockRow || singleRow || adapter == null || grid == null) return;
+        // Already on the first screen: leave it alone, so moving between top-bar buttons never
+        // bounces the rows below.
+        int offset = grid.computeVerticalScrollOffset();
+        if (offset == 0) return;
+        fitPlainGridRows();
+        grid.stopScroll();
+        // Glide back instead of snapping: the same scroll feel as moving between rows.
+        grid.smoothScrollBy(0, -offset);
+    }
+
     /** True when PackageManager reports apps changed since the last rebuild (one binder call). */
     private boolean packagesChangedSinceRebuild() {
         ChangedPackages changed = getPackageManager().getChangedPackages(packageSequence);
@@ -1174,6 +1270,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         cards = moduleCards ? CardFeature.run(() -> Cards.discover(this, hiddenApps,
                 () -> Cards.load(Cards.storeFile(this)), leanback), none) : none;
         adapter.reload(cards.isEmpty() ? none : CardFeature.run(() -> Cards.shown(cards), none), leanback);
+        grid.post(() -> {
+            grid.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    grid.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                    fitPlainGridRows();
+                }
+            });
+            grid.requestLayout();
+        });
         lastFocusedKey = returnKey;
         lastFocused = returnSlot;
         packageSequence = currentPackageSequence(packageSequence);
@@ -2115,6 +2221,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         glass.animate().cancel();
         if (animations && !reducedMotion) glass.animate().alpha(0f).setDuration(160).start();
         else glass.setAlpha(0f);
+    }
+
+    /** Entering the top bar: no selection frame or shelf should linger behind the focus move. */
+    private void hideGridChromeNow() {
+        glassShown = false;
+        glass.animate().cancel();
+        glass.setAlpha(0f);
+        hero.animate().cancel();
+        heroShown = false;
+        hero.setAlpha(0f);
     }
 
     // ---- optional system stats (config.xml show_stats) --------------------------------------------

@@ -151,7 +151,7 @@ final class Config {
     final boolean appLibrarySelection;
     /** OK opens every app in the library; Add to Home stays in the hold menu (library_ok_opens). */
     final boolean libraryOkOpens;
-    /** Icon on a card tinted from that icon, instead of the app's banner (config.xml uniform_tiles). */
+    /** Without a banner, the icon on a card tinted from it; an app with a banner keeps the banner (config.xml uniform_tiles). */
     final boolean uniformTiles;
     /** Background colour behind everything, #RRGGBB; black unless a theme says otherwise. */
     final int backgroundColor;
