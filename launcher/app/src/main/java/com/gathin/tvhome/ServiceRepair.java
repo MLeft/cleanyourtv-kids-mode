@@ -6,9 +6,11 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.provider.Settings;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -22,6 +24,11 @@ import java.util.Objects;
  */
 final class ServiceRepair {
     private static final String PREFS = "accessibility_helpers";
+    /** The kids-mode add-on's guard: an accessibility service in another package. */
+    private static final String KIDS_PACKAGE = "com.gathin.kidsmode";
+    private static final String KIDS_GUARD = "com.gathin.kidsmode.KidsGuardService";
+    /** One repair at a time: the observer also fires for the add/remove/add writes below. */
+    private static volatile boolean repairing;
 
     private ServiceRepair() {
     }
@@ -37,6 +44,38 @@ final class ServiceRepair {
     static void restore(Context context) {
         if (context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS)
                 != PackageManager.PERMISSION_GRANTED) return;
+        List<ComponentName> recorded = new ArrayList<>();
+        for (String service : prefs(context).getAll().keySet()) {
+            recorded.add(new ComponentName(context.getPackageName(), service));
+        }
+        restore(context, recorded);
+    }
+
+    /**
+     * MIUI TVs run killAllThirdApp when they power off, which force-stops third-party apps; Android
+     * then drops their accessibility services from the enabled list, so the kids-mode guard came back
+     * off after every power cycle. Home puts it back at startup (restore_kids_guard), without needing
+     * the add-on to record itself: it is a fixed component of this fork.
+     */
+    static void restoreKidsGuard(Context context) {
+        if (context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS)
+                != PackageManager.PERMISSION_GRANTED) return;
+        ComponentName guard = kidsGuard(context);
+        if (guard != null) restore(context, Collections.singletonList(guard));
+    }
+
+    private static ComponentName kidsGuard(Context context) {
+        ComponentName guard = new ComponentName(KIDS_PACKAGE, KIDS_GUARD);
+        try {
+            ServiceInfo info = context.getPackageManager().getServiceInfo(guard, 0);
+            return info.enabled && info.exported ? guard : null;
+        } catch (PackageManager.NameNotFoundException e) {
+            return null;
+        }
+    }
+
+    private static void restore(Context context, List<ComponentName> recorded) {
+        if (recorded.isEmpty() || repairing) return;
         try {
             ContentResolver cr = context.getContentResolver();
             String list = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
@@ -47,11 +86,6 @@ final class ServiceRepair {
                     if (name != null) enabled.add(name);
                 }
             }
-            List<ComponentName> recorded = new ArrayList<>();
-            for (String service : prefs(context).getAll().keySet()) {
-                recorded.add(new ComponentName(context.getPackageName(), service));
-            }
-            if (recorded.isEmpty()) return;
             // The list without our recorded helpers, then with all of them.
             StringBuilder others = new StringBuilder();
             for (ComponentName name : enabled) {
@@ -77,6 +111,7 @@ final class ServiceRepair {
             // that way instead of being overwritten by a snapshot.
             final String without = others.toString();
             final String with = updated.toString();
+            repairing = true;
             new Thread(() -> {
                 try {
                     if (!replaceList(cr, list, with)) return;
@@ -87,6 +122,8 @@ final class ServiceRepair {
                     Settings.Secure.putInt(cr, Settings.Secure.ACCESSIBILITY_ENABLED, 1);
                 } catch (RuntimeException | InterruptedException ignored) {
                     // The setting is the system's; a refusal leaves the helper off, as before.
+                } finally {
+                    repairing = false;
                 }
             }, "ServiceRepair").start();
         } catch (RuntimeException ignored) {

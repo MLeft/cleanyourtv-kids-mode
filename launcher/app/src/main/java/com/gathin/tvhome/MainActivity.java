@@ -19,6 +19,7 @@ import android.content.pm.ResolveInfo;
 import android.content.pm.ChangedPackages;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
+import android.database.ContentObserver;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -439,6 +440,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // restore_key_services: after a force stop, put back the remote's accessibility helpers that Android took
         // off the list (needs WRITE_SECURE_SETTINGS, granted by build-and-install with RESTORE_KEY_SERVICES=1).
         if (cfg.restoreKeyServices) ServiceRepair.restore(this);
+        if (getResources().getBoolean(R.bool.restore_kids_guard)) {
+            ServiceRepair.restoreKidsGuard(this);
+            watchKidsGuard();
+        }
         settingsRevision = settingsRevision();
         applyViewInputsHandler(cfg.handleViewInputs);
         settingsKeycodes = cfg.settingsKeycodes;
@@ -1067,6 +1072,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             recreate();
             return;
         }
+        if (getResources().getBoolean(R.bool.restore_kids_guard)) ServiceRepair.restoreKidsGuard(this);
         restartIdleClock();
         promptsPaused = false;
         if (reopenLibrary) {
@@ -1492,6 +1498,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     @Override
     protected void onDestroy() {
+        stopWatchingKidsGuard();
         super.onDestroy();
         if (gameDay != null) gameDay.shutdown();
         unregisterReceiver(packageReceiver);
@@ -1893,6 +1900,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } catch (ActivityNotFoundException | SecurityException e) {
             return false;
         }
+    }
+
+    private void watchKidsGuard() {
+        if (kidsGuardObserver != null) return;
+        kidsGuardObserver = new ContentObserver(handler) {
+            @Override public void onChange(boolean selfChange) {
+                ServiceRepair.restoreKidsGuard(MainActivity.this);
+            }
+        };
+        getContentResolver().registerContentObserver(
+                Settings.Secure.getUriFor(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES), false, kidsGuardObserver);
+        getContentResolver().registerContentObserver(
+                Settings.Secure.getUriFor(Settings.Secure.ACCESSIBILITY_ENABLED), false, kidsGuardObserver);
+    }
+
+    private void stopWatchingKidsGuard() {
+        if (kidsGuardObserver == null) return;
+        getContentResolver().unregisterContentObserver(kidsGuardObserver);
+        kidsGuardObserver = null;
     }
 
     private void showAppLibrary() {
@@ -3144,6 +3170,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean libraryFromVpnPill;
     /** The system uninstaller closed the library: reopening it on return keeps uninstalls going one after another. */
     private boolean reopenLibrary;
+    /** Watches the accessibility list for the whole Home process: MIUI drops the kids guard a few
+     *  seconds after its power-off force stop, sometimes after Home has already put it back, and it
+     *  can land while another app is in front. */
+    private ContentObserver kidsGuardObserver;
     private String reopenLibraryPackage;
     private int reopenLibraryPosition;
     private int reopenLibraryFirst = RecyclerView.NO_POSITION;

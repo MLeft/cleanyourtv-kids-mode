@@ -207,6 +207,10 @@
          Settings stays off. Needs WRITE_SECURE_SETTINGS, which build-and-install grants with RESTORE_KEY_SERVICES=1
          (-RestoreKeyServices on Windows). Can also be set with "restore_key_services": true in a theme's config.json. -->
     <bool name="restore_key_services">false</bool>
+    <!-- MIUI TVs run killAllThirdApp when they power off; Android drops the force-stopped add-on's guard
+         from the accessibility list, so kids mode came back off after a power cycle. Home puts the guard
+         back at startup (needs WRITE_SECURE_SETTINGS; a no-op while the add-on is not installed). -->
+    <bool name="restore_kids_guard">true</bool>
 
     <!-- More remote buttons that open the input switcher, by Android keycode (INPUT_KEY_SERVICE=1
          build-and-install.sh; KEYCODE_TV always does). For buttons only a disabled app answered: the Xiaomi
