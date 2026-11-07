@@ -22,6 +22,8 @@ public final class KidsModeActivity extends Activity {
     private TextView sessionChoice;
     private TextView waitChoice;
     private TextView dailyChoice;
+    private TextView unmanagedStartChoice;
+    private TextView unmanagedEndChoice;
     private TextView libraryGraceChoice;
     private TextView serviceChoice;
     private TextView usageText;
@@ -77,6 +79,8 @@ public final class KidsModeActivity extends Activity {
         sessionChoice = findViewById(R.id.sessionLimitChoice);
         waitChoice = findViewById(R.id.waitLimitChoice);
         dailyChoice = findViewById(R.id.dailyLimitChoice);
+        unmanagedStartChoice = findViewById(R.id.unmanagedStartChoice);
+        unmanagedEndChoice = findViewById(R.id.unmanagedEndChoice);
         libraryGraceChoice = findViewById(R.id.libraryGraceChoice);
         serviceChoice = findViewById(R.id.serviceChoice);
         usageText = findViewById(R.id.kidsUsageText);
@@ -91,6 +95,8 @@ public final class KidsModeActivity extends Activity {
         dailyChoice.setOnClickListener(v -> showChoice(R.string.kids_daily_limit,
                 KidsStore.DAILY_OPTIONS, KidsStore.dailyLimitMin(this),
                 value -> KidsStore.setDailyLimit(this, value)));
+        unmanagedStartChoice.setOnClickListener(v -> showUnmanagedStartChoice());
+        unmanagedEndChoice.setOnClickListener(v -> showUnmanagedEndChoice());
         libraryGraceChoice.setOnClickListener(v -> showGraceChoice());
         findViewById(R.id.changePinChoice).setOnClickListener(v -> promptNewPin(null));
         findViewById(R.id.resetUsageChoice).setOnClickListener(v -> confirmReset());
@@ -141,6 +147,19 @@ public final class KidsModeActivity extends Activity {
         sessionChoice.setText(getString(R.string.kids_session_limit_state, formatMinutes(session)));
         waitChoice.setText(getString(R.string.kids_wait_limit_state, formatMinutes(wait)));
         dailyChoice.setText(getString(R.string.kids_daily_limit_state, formatMinutes(daily)));
+
+        int unmanagedStart = KidsStore.unmanagedStartMin(this);
+        boolean unmanagedOn = unmanagedStart >= 0;
+        unmanagedStartChoice.setText(getString(R.string.kids_unmanaged_start_state,
+                unmanagedOn ? KidsStore.formatClock(unmanagedStart)
+                        : getString(R.string.kids_unmanaged_off)));
+        unmanagedEndChoice.setText(getString(R.string.kids_unmanaged_end_state,
+                unmanagedOn ? KidsStore.formatClock(KidsStore.unmanagedEndMin(this))
+                        : getString(R.string.kids_unmanaged_off)));
+        unmanagedEndChoice.setEnabled(unmanagedOn);
+        unmanagedEndChoice.setFocusable(unmanagedOn);
+        unmanagedEndChoice.setAlpha(unmanagedOn ? 1f : 0.5f);
+
         libraryGraceChoice.setText(getString(R.string.kids_library_grace_state,
                 formatGrace(KidsStore.libraryGraceMin(this))));
         waitChoice.setEnabled(session > 0);
@@ -209,6 +228,76 @@ public final class KidsModeActivity extends Activity {
                 .setNegativeButton(android.R.string.cancel, null)
                 .create();
         showCentered(dialog, 560, null);
+    }
+
+    /** "Off" plus a time every half hour; a picked start seeds an end two hours later. */
+    private void showUnmanagedStartChoice() {
+        int step = KidsStore.UNMANAGED_STEP_MIN;
+        int[] options = new int[KidsStore.MINUTES_PER_DAY / step + 1];
+        String[] labels = new String[options.length];
+        options[0] = KidsStore.UNMANAGED_OFF;
+        labels[0] = getString(R.string.kids_unmanaged_off);
+        int current = KidsStore.unmanagedStartMin(this);
+        int checked = 0;
+        for (int i = 1; i < options.length; i++) {
+            options[i] = (i - 1) * step;
+            labels[i] = KidsStore.formatClock(options[i]);
+            if (options[i] == current) checked = i;
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle(R.string.kids_unmanaged_start_title)
+                .setSingleChoiceItems(labels, checked, (d, which) -> {
+                    d.dismiss();
+                    KidsStore.setUnmanagedStart(this, options[which]);
+                    refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        showCentered(dialog, 560, scrollTo(dialog, checked));
+    }
+
+    /** Every half-hour value except the start, so the window never becomes empty. */
+    private void showUnmanagedEndChoice() {
+        int start = KidsStore.unmanagedStartMin(this);
+        if (start < 0) return;
+        int step = KidsStore.UNMANAGED_STEP_MIN;
+        int[] options = new int[KidsStore.MINUTES_PER_DAY / step - 1];
+        String[] labels = new String[options.length];
+        int current = KidsStore.unmanagedEndMin(this);
+        int checked = 0;
+        for (int i = 0, minute = 0; minute < KidsStore.MINUTES_PER_DAY; minute += step) {
+            if (minute == start) continue;
+            options[i] = minute;
+            labels[i] = KidsStore.formatClock(minute);
+            if (minute == current) checked = i;
+            i++;
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle(R.string.kids_unmanaged_end_title)
+                .setSingleChoiceItems(labels, checked, (d, which) -> {
+                    d.dismiss();
+                    KidsStore.setUnmanagedEnd(this, options[which]);
+                    refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        showCentered(dialog, 560, scrollTo(dialog, checked));
+    }
+
+    /**
+     * The list is longer than the screen: cap the dialog to a readable height and open it around
+     * the current value, not at 00:00.
+     */
+    private Runnable scrollTo(AlertDialog dialog, int checked) {
+        return () -> {
+            Window window = dialog.getWindow();
+            if (window != null) {
+                WindowManager.LayoutParams params = window.getAttributes();
+                params.height = Math.round(420 * getResources().getDisplayMetrics().density);
+                window.setAttributes(params);
+            }
+            dialog.getListView().setSelection(Math.max(0, checked - 2));
+        };
     }
 
     private void confirmReset() {

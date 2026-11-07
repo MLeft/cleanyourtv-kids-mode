@@ -10,6 +10,9 @@ Session and daily screen-time limits with a parent PIN, built as an optional add
   appears. The lock shows a rest countdown; when it ends a new session starts automatically.
 - **Daily limit**: after the configured minutes today, the lock stays until midnight (the lock shows the time
   left). The daily total resets at 00:00.
+- **No-control window**: a start and an end time, set on a 30-minute step, during which the timer pauses, no
+  lock appears and the launcher's app library opens without the PIN. A window that ends earlier than it starts
+  crosses midnight (22:00 to 07:00). Off by default; the summary reads “No control until 20:00” while it runs.
 - **Parent PIN**: four digits, stored as a salted SHA-256 hash. The PIN gates the settings screen and unlocks
   any lock. Five wrong entries lock the keypad for 60 seconds.
 - **Temporary override**: on a lock screen, enter the PIN and choose 10, 15, 20, 30 or 60 minutes. The chosen
@@ -21,7 +24,7 @@ Session and daily screen-time limits with a parent PIN, built as an optional add
 - The timer runs while the TV screen is on. Turning the TV off for at least the configured rest starts a new
   session; the override countdown pauses while the screen is off.
 - Settings ranges: session 0/15/20/30/45/60/90 min, rest 5/10/15/20/30/45/60 min, daily
-  0/30/60/90/120/180/240 min (0 = unlimited).
+  0/30/60/90/120/180/240 min (0 = unlimited); the no-control window runs from 00:00 to 23:30 in 30-minute steps.
 
 ## Install
 
@@ -64,7 +67,13 @@ adb shell am broadcast -a com.gathin.kidsmode.ADMIN -n com.gathin.kidsmode/.Kids
 ```
 
 Useful extras: `--ez reset true` clears today's usage, `--ez clear_pin true` removes the PIN and returns to the
-defaults, and `--ei override_seconds 5` shortens an override for an expiry test.
+defaults, and `--ei override_seconds 5` shortens an override for an expiry test. A no-control window is set in
+minutes past midnight (`-1` clears it):
+
+```sh
+adb shell am broadcast -a com.gathin.kidsmode.ADMIN -n com.gathin.kidsmode/.KidsAdminReceiver \
+  --ei unmanaged_start_min 1080 --ei unmanaged_end_min 1200   # 18:00 to 20:00
+```
 
 ## Permissions and data
 

@@ -25,7 +25,7 @@
     <string name="kids_usage">今日已看 %1$d 分钟 · 剩余 %2$s；本次已看 %3$d 分钟。</string>
     <string name="kids_usage_unlimited">今日已看 %1$d 分钟（每日不限）；本次已看 %2$d 分钟。</string>
     <string name="kids_usage_short">今日剩余 %1$d 分钟</string>
-    <string name="kids_hint">电视亮着就计时；关闭电视超过“超时后等待”的时长，再打开算新的一次观看。每日 0 点重置。任何超时锁定都可以输入家长密码临时授权，授权到期后会再次锁定；再次延长需再次验证密码并选择倒计时时长。</string>
+    <string name="kids_hint">电视亮着就计时；关闭电视超过“超时后等待”的时长，再打开算新的一次观看。每日 0 点重置。在“不管控”时段内不计时、不锁定，应用库也无需家长密码；结束时间早于开始时间时，该时段跨过 0 点。任何超时锁定都可以输入家长密码临时授权，授权到期后会再次锁定；再次延长需再次验证密码并选择倒计时时长。</string>
     <string name="kids_service_on">守护服务：已开启</string>
     <string name="kids_service_off">守护服务：未开启（点击开启）</string>
     <string name="kids_auth_title">进入应用库</string>
@@ -33,6 +33,14 @@
     <string name="kids_auth_hint_always">每次进入应用库都需要家长密码。</string>
     <string name="kids_library_grace">应用库免授权</string>
     <string name="kids_library_grace_state">应用库免授权：%1$s</string>
+    <string name="kids_unmanaged_start">不管控开始</string>
+    <string name="kids_unmanaged_end">不管控结束</string>
+    <string name="kids_unmanaged_start_state">不管控开始：%1$s</string>
+    <string name="kids_unmanaged_end_state">不管控结束：%1$s</string>
+    <string name="kids_unmanaged_start_title">不管控开始时间</string>
+    <string name="kids_unmanaged_end_title">不管控结束时间</string>
+    <string name="kids_unmanaged_off">关闭</string>
+    <string name="kids_unmanaged_short">%1$s 前不管控</string>
 
     <string name="kids_pin_title">家长密码</string>
     <string name="kids_pin_enter">请输入家长密码</string>

@@ -58,7 +58,8 @@ public final class KidsGuardService extends AccessibilityService {
 
             boolean counting = KidsStore.isEnabled(KidsGuardService.this)
                     && screenOn && !KidsStore.settingsOpen
-                    && overlay == null && lockState == KidsStore.LOCK_NONE;
+                    && overlay == null && lockState == KidsStore.LOCK_NONE
+                    && !KidsStore.isUnmanagedNow(KidsGuardService.this, nowWall);
             if (counting) {
                 KidsStore.addUsage(KidsGuardService.this, dt);
                 if (KidsStore.overrideRemainingMs(KidsGuardService.this) > 0) {

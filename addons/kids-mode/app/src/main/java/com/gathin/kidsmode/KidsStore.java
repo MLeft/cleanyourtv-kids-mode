@@ -10,7 +10,9 @@ import android.util.Base64;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Locale;
 
@@ -30,6 +32,10 @@ final class KidsStore {
     static final int[] OVERRIDE_OPTIONS = {10, 15, 20, 30, 60};
     static final int DEFAULT_LIBRARY_GRACE_MIN = 5;
     static final int[] LIBRARY_GRACE_OPTIONS = {0, 1, 5, 10, 15};
+    /** Start and end of the no-control window, as minutes past midnight; -1 means no window. */
+    static final int UNMANAGED_OFF = -1;
+    static final int MINUTES_PER_DAY = 24 * 60;
+    static final int UNMANAGED_STEP_MIN = 30;
 
     static final int LOCK_NONE = 0;
     static final int LOCK_SESSION = 1;
@@ -55,6 +61,8 @@ final class KidsStore {
     private static final String KEY_OVERRIDE_REMAINING = "override_remaining_ms";
     private static final String KEY_LIBRARY_GRACE_MIN = "library_grace_min";
     private static final String KEY_LIBRARY_GRACE_UNTIL = "library_grace_until";
+    private static final String KEY_UNMANAGED_START = "unmanaged_start_min";
+    private static final String KEY_UNMANAGED_END = "unmanaged_end_min";
 
     /** Set while the settings screen is in front; the guard neither counts nor locks then. */
     static volatile boolean settingsOpen;
@@ -126,6 +134,69 @@ final class KidsStore {
 
     static void clearLibraryGrace(Context c) {
         prefs(c).edit().putLong(KEY_LIBRARY_GRACE_UNTIL, 0).apply();
+    }
+
+    static int unmanagedStartMin(Context c) {
+        return prefs(c).getInt(KEY_UNMANAGED_START, UNMANAGED_OFF);
+    }
+
+    static int unmanagedEndMin(Context c) {
+        return prefs(c).getInt(KEY_UNMANAGED_END, UNMANAGED_OFF);
+    }
+
+    static boolean hasUnmanagedWindow(Context c) {
+        int start = unmanagedStartMin(c);
+        int end = unmanagedEndMin(c);
+        return start >= 0 && end >= 0 && start != end;
+    }
+
+    /** -1 turns the window off; a real start keeps the end, or defaults to two hours later. */
+    static void setUnmanagedStart(Context c, int minuteOfDay) {
+        if (minuteOfDay < 0 || minuteOfDay >= MINUTES_PER_DAY) {
+            prefs(c).edit()
+                    .putInt(KEY_UNMANAGED_START, UNMANAGED_OFF)
+                    .putInt(KEY_UNMANAGED_END, UNMANAGED_OFF)
+                    .apply();
+            return;
+        }
+        SharedPreferences.Editor editor = prefs(c).edit().putInt(KEY_UNMANAGED_START, minuteOfDay);
+        int end = unmanagedEndMin(c);
+        if (end < 0 || end == minuteOfDay) {
+            editor.putInt(KEY_UNMANAGED_END, (minuteOfDay + 120) % MINUTES_PER_DAY);
+        }
+        editor.apply();
+    }
+
+    static void setUnmanagedEnd(Context c, int minuteOfDay) {
+        int start = unmanagedStartMin(c);
+        if (start < 0) return;
+        if (minuteOfDay < 0 || minuteOfDay >= MINUTES_PER_DAY) return;
+        // The same minute at both ends would read as an empty window; keep the previous end.
+        if (minuteOfDay == start) return;
+        prefs(c).edit().putInt(KEY_UNMANAGED_END, minuteOfDay).apply();
+    }
+
+    /**
+     * True inside the no-control window. The window may cross midnight (22:00 to 07:00);
+     * a start equal to the end means it is off.
+     */
+    static boolean isUnmanagedNow(Context c, long nowWall) {
+        if (!isEnabled(c) || !hasUnmanagedWindow(c)) return false;
+        int start = unmanagedStartMin(c);
+        int end = unmanagedEndMin(c);
+        int now = minuteOfDay(nowWall);
+        if (start < end) return now >= start && now < end;
+        return now >= start || now < end;
+    }
+
+    private static int minuteOfDay(long wall) {
+        LocalTime time = Instant.ofEpochMilli(wall).atZone(ZoneId.systemDefault()).toLocalTime();
+        return time.getHour() * 60 + time.getMinute();
+    }
+
+    static String formatClock(int minuteOfDay) {
+        int minute = Math.floorMod(minuteOfDay, MINUTES_PER_DAY);
+        return String.format(Locale.ROOT, "%02d:%02d", minute / 60, minute % 60);
     }
 
     static void setPin(Context c, String pin) {
@@ -299,6 +370,8 @@ final class KidsStore {
                 .putInt(KEY_WAIT_MIN, DEFAULT_WAIT_MIN)
                 .putInt(KEY_DAILY_MIN, DEFAULT_DAILY_MIN)
                 .putInt(KEY_LIBRARY_GRACE_MIN, DEFAULT_LIBRARY_GRACE_MIN)
+                .putInt(KEY_UNMANAGED_START, UNMANAGED_OFF)
+                .putInt(KEY_UNMANAGED_END, UNMANAGED_OFF)
                 .putInt(KEY_FAIL_COUNT, 0)
                 .putLong(KEY_FAIL_UNTIL, 0)
                 .putLong(KEY_LIBRARY_GRACE_UNTIL, 0)
@@ -323,6 +396,8 @@ final class KidsStore {
         if (!isEnabled(c)) return LOCK_NONE;
         SharedPreferences p = prefs(c);
         if (p.getLong(KEY_OVERRIDE_REMAINING, 0) > 0) return LOCK_NONE;
+        // Free time: no lock even when a limit was already reached; the guard pauses the clock too.
+        if (isUnmanagedNow(c, nowWall)) return LOCK_NONE;
 
         int daily = dailyLimitMin(c);
         if (daily > 0 && p.getLong(KEY_USED_TODAY, 0) >= daily * 60_000L) {
@@ -383,6 +458,11 @@ final class KidsStore {
         }
         if (!isEnabled(c)) {
             return c.getString(R.string.kids_enabled_choice, c.getString(R.string.kids_off));
+        }
+        if (isUnmanagedNow(c, System.currentTimeMillis())) {
+            return c.getString(R.string.kids_enabled_choice,
+                    c.getString(R.string.kids_unmanaged_short,
+                            formatClock(unmanagedEndMin(c))));
         }
         int reason = lockReason(c, System.currentTimeMillis());
         if (reason == LOCK_DAILY) {

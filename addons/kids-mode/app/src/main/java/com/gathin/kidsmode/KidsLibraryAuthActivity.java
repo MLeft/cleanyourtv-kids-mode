@@ -5,14 +5,16 @@ import android.os.Bundle;
 import android.widget.TextView;
 
 /**
- * The launcher asks this exported activity before opening its app library. With kids mode off or
- * a grace window still running it returns RESULT_OK immediately; otherwise it shows the parent PIN.
+ * The launcher asks this exported activity before opening its app library. With kids mode off, a
+ * grace window still running or the no-control window active it returns RESULT_OK immediately;
+ * otherwise it shows the parent PIN.
  */
 public final class KidsLibraryAuthActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        if (!KidsStore.isEnabled(this) || KidsStore.isLibraryGraceActive(this)) {
+        if (!KidsStore.isEnabled(this) || KidsStore.isLibraryGraceActive(this)
+                || KidsStore.isUnmanagedNow(this, System.currentTimeMillis())) {
             setResult(RESULT_OK);
             finish();
             return;
