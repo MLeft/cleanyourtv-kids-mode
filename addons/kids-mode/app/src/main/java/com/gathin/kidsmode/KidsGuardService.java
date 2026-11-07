@@ -193,6 +193,7 @@ public final class KidsGuardService extends AccessibilityService {
         if (changed) {
             lockTitle.setText(reason == KidsStore.LOCK_DAILY
                     ? R.string.kids_lock_daily_title : R.string.kids_lock_session_title);
+            lockTitle.setVisibility(View.VISIBLE);
             lockMessage.setVisibility(View.VISIBLE);
             lockCountdown.setVisibility(View.VISIBLE);
             lockHint.setVisibility(View.VISIBLE);
@@ -277,6 +278,8 @@ public final class KidsGuardService extends AccessibilityService {
 
     private void showOverrideMenu() {
         if (pinView == null || overrideMenu == null) return;
+        // The lock title belongs to the PIN page; over the menu it pushed "Parent verified" down.
+        lockTitle.setVisibility(View.GONE);
         pinView.setVisibility(View.GONE);
         lockMessage.setVisibility(View.GONE);
         lockCountdown.setVisibility(View.GONE);
@@ -303,6 +306,7 @@ public final class KidsGuardService extends AccessibilityService {
         overlay.findViewById(R.id.kidsStayLocked).setOnClickListener(v -> {
             if (pinView == null || overrideMenu == null) return;
             overrideMenu.setVisibility(View.GONE);
+            lockTitle.setVisibility(View.VISIBLE);
             pinView.setVisibility(View.VISIBLE);
             lockMessage.setVisibility(View.VISIBLE);
             lockCountdown.setVisibility(View.VISIBLE);

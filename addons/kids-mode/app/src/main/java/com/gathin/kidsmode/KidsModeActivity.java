@@ -10,6 +10,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -333,15 +334,27 @@ public final class KidsModeActivity extends Activity {
     private void showPinDialog(int title, Consumer<String> onDone) {
         KidsPinView pin = new KidsPinView(this);
         pin.setTitle(getString(title));
+        // AlertDialog gives a custom view no padding, which left the keypad welded to the panel
+        // edge; give it the same air as the lock and app-library panels.
+        float density = getResources().getDisplayMetrics().density;
+        FrameLayout panel = new FrameLayout(this);
+        panel.setPadding(Math.round(20 * density), Math.round(16 * density),
+                Math.round(20 * density), Math.round(12 * density));
+        panel.addView(pin, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
-                .setView(pin)
+                .setView(panel)
                 .setCancelable(true)
                 .create();
         pin.setOnComplete(value -> {
             dialog.dismiss();
             onDone.accept(value);
         });
-        showCentered(dialog, 440, pin::focusFirst);
+        showCentered(dialog, 500, () -> {
+            Window window = dialog.getWindow();
+            if (window != null) window.setBackgroundDrawableResource(R.drawable.kids_panel_bg);
+            pin.focusFirst();
+        });
     }
 
     /** Dialogs on a fullscreen TV theme otherwise sit at the top-left; pin them to the middle. */
