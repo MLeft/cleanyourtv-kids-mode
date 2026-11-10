@@ -34,10 +34,7 @@ Themes set the same keys plus a background colour and a wallpaper.
 
 ## Launcher settings and the default home
 
-Click **Settings** for the TV's own settings. Where the TV ships a vendor settings app beside
-Android's and the standard intent lands on Android's (Xiaomi China), the click opens the vendor
-app: Android's Add account page starts Google's account-type picker, which China firmware does not
-have, and crashes back to Home there. Hold OK on it for its menu:
+Click **Settings** for the TV's own settings. Hold OK on it for its menu:
 
 - **Launcher settings**. With `launcher_settings_button` a click opens those instead, and the menu
   leaves the row out.

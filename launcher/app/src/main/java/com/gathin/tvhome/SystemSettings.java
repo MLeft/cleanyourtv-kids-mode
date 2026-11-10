@@ -20,20 +20,7 @@ final class SystemSettings {
         ResolveInfo resolved = pm.resolveActivity(standard, PackageManager.MATCH_DEFAULT_ONLY);
         // Fire OS resolves the standard actions to a CTS compliance stub that opens nothing;
         // treat it as missing so the vendor fallback runs.
-        if (resolved != null && !resolved.activityInfo.name.contains("CTSDummy")) {
-            // Firmware that ships its own settings app beside the AOSP one (Xiaomi China) sends
-            // ACTION_SETTINGS to AOSP. Its Add account page then starts Google's account-type
-            // picker, which China firmware does not have, so the settings process crashes and the
-            // TV drops back to Home. The vendor app is the TV's own settings and carries the
-            // Xiaomi account page, so open it for the main screen; Wi-Fi and VPN keep the
-            // standard app, whose pages exist everywhere.
-            if (Settings.ACTION_SETTINGS.equals(action)
-                    && AOSP_TV_SETTINGS.getPackageName().equals(resolved.activityInfo.packageName)) {
-                Intent vendor = vendorIntent(context);
-                if (vendor != null) return vendor;
-            }
-            return standard;
-        }
+        if (resolved != null && !resolved.activityInfo.name.contains("CTSDummy")) return standard;
         Intent vendor = vendorIntent(context);
         if (vendor != null) return vendor;
         // Some firmware ships the AOSP TV settings app with no filter for the standard actions (HY300 Pro+
