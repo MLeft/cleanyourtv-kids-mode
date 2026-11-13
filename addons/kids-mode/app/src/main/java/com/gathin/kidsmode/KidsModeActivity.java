@@ -43,6 +43,7 @@ public final class KidsModeActivity extends Activity {
     protected void onResume() {
         super.onResume();
         KidsStore.settingsOpen = true;
+        if (KidsStore.isEnabled(this)) KidsGuardKeeper.start(this);
         if (settingsShown) refresh();
     }
 
@@ -101,7 +102,19 @@ public final class KidsModeActivity extends Activity {
         libraryGraceChoice.setOnClickListener(v -> showGraceChoice());
         findViewById(R.id.changePinChoice).setOnClickListener(v -> promptNewPin(null));
         findViewById(R.id.resetUsageChoice).setOnClickListener(v -> confirmReset());
-        serviceChoice.setOnClickListener(v -> openAccessibility());
+        serviceChoice.setOnClickListener(v -> {
+            if (KidsStore.isAccessibilityEnabled(this)) {
+                openAccessibility();
+            } else if (KidsStore.ensureGuard(this)) {
+                Toast.makeText(this, R.string.kids_guard_starting, Toast.LENGTH_SHORT).show();
+            } else {
+                openAccessibility();
+            }
+        });
+        serviceChoice.setOnLongClickListener(v -> {
+            openAccessibility();
+            return true;
+        });
 
         refresh();
         enabledChoice.requestFocus();
@@ -110,6 +123,7 @@ public final class KidsModeActivity extends Activity {
     private void toggleMode() {
         if (KidsStore.isEnabled(this)) {
             KidsStore.setEnabled(this, false);
+            KidsGuardKeeper.stop(this);
             Toast.makeText(this, R.string.kids_disabled_toast, Toast.LENGTH_SHORT).show();
             refresh();
             return;
@@ -119,17 +133,22 @@ public final class KidsModeActivity extends Activity {
             return;
         }
         if (!KidsStore.isAccessibilityEnabled(this)) {
-            AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
-                    .setTitle(R.string.kids_accessibility_title)
-                    .setMessage(R.string.kids_accessibility_message)
-                    .setPositiveButton(R.string.kids_open_accessibility,
-                            (d, which) -> openAccessibility())
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .create();
-            showCentered(dialog, 560, null);
-            return;
+            if (KidsStore.ensureGuard(this)) {
+                Toast.makeText(this, R.string.kids_guard_starting, Toast.LENGTH_SHORT).show();
+            } else {
+                AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                        .setTitle(R.string.kids_accessibility_title)
+                        .setMessage(R.string.kids_accessibility_message)
+                        .setPositiveButton(R.string.kids_open_accessibility,
+                                (d, which) -> openAccessibility())
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .create();
+                showCentered(dialog, 560, null);
+                return;
+            }
         }
         KidsStore.setEnabled(this, true);
+        KidsGuardKeeper.start(this);
         Toast.makeText(this, R.string.kids_enabled_toast, Toast.LENGTH_SHORT).show();
         refresh();
     }

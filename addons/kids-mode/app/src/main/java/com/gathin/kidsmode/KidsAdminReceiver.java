@@ -21,6 +21,7 @@ public final class KidsAdminReceiver extends BroadcastReceiver {
 
         if (intent.getBooleanExtra("clear_pin", false)) {
             KidsStore.clearPin(context);
+            KidsGuardKeeper.stop(context);
         }
         if (intent.hasExtra("pin")) {
             String pin = intent.getStringExtra("pin");
@@ -39,7 +40,19 @@ public final class KidsAdminReceiver extends BroadcastReceiver {
             KidsStore.resetUsage(context);
         }
         if (intent.hasExtra("enabled")) {
-            KidsStore.setEnabled(context, intent.getBooleanExtra("enabled", false));
+            boolean enabled = intent.getBooleanExtra("enabled", false);
+            KidsStore.setEnabled(context, enabled);
+            if (enabled) {
+                KidsGuardJob.schedule(context);
+                KidsGuardKeeper.start(context);
+                KidsStore.ensureGuard(context);
+            } else {
+                KidsGuardKeeper.stop(context);
+            }
+        }
+        if (intent.getBooleanExtra("ensure_guard", false)) {
+            KidsStore.ensureGuard(context);
+            if (KidsStore.isEnabled(context)) KidsGuardKeeper.start(context);
         }
         if (intent.hasExtra("override_minutes")) {
             KidsStore.grantOverride(context, intent.getIntExtra("override_minutes", 10));

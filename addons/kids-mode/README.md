@@ -15,6 +15,11 @@ Session and daily screen-time limits with a parent PIN, built as an optional add
   crosses midnight (22:00 to 07:00). Off by default; the summary reads “No control until 20:00” while it runs.
 - **Parent PIN**: four digits, stored as a salted SHA-256 hash. The PIN gates the settings screen and unlocks
   any lock. Five wrong entries lock the keypad for 60 seconds.
+- **Self-healing guard**: a foreground keeper, a boot receiver and a persisted 15-minute job put the guard's
+  accessibility service back after MIUI force-stops the add-on on a power cycle or standby. It also cycles
+  add/remove/add so Android drops the "crashed" mark a force stop leaves behind. With
+  `WRITE_SECURE_SETTINGS` granted once over ADB, the add-on does this itself; without it, tap the guard row
+  to open the Accessibility settings.
 - **Temporary override**: on a lock screen, enter the PIN and choose 10, 15, 20, 30 or 60 minutes. The chosen
   duration is a countdown of screen-on time; when it runs out the lock returns. Choose again to extend.
   “Turn off kids mode” is also in that menu.
@@ -35,8 +40,14 @@ cd addons/kids-mode
 ./gradlew assembleRelease
 adb connect <tv ip>:5555
 adb install -r app/build/outputs/apk/release/app-release.apk
+adb shell pm grant com.gathin.kidsmode android.permission.WRITE_SECURE_SETTINGS
 adb shell am start -n com.gathin.kidsmode/.KidsModeActivity
 ```
+
+The grant is a development permission, allowed over ADB once; it lets the add-on put its own guard back
+after the firmware kills it. Without it the guard row opens the Accessibility settings instead. The
+add-on keeps a low-priority "Kids mode is on" notification while the mode is on; that is the foreground
+keeper, not an ad.
 
 On the TV, enable **Kids mode guard** in **Settings → Accessibility**. To enable it over ADB while keeping every
 service already enabled, append the component instead of replacing the list:
@@ -67,18 +78,27 @@ adb shell am broadcast -a com.gathin.kidsmode.ADMIN -n com.gathin.kidsmode/.Kids
 ```
 
 Useful extras: `--ez reset true` clears today's usage, `--ez clear_pin true` removes the PIN and returns to the
-defaults, and `--ei override_seconds 5` shortens an override for an expiry test. A no-control window is set in
-minutes past midnight (`-1` clears it):
+defaults, `--ez ensure_guard true` puts the guard back and starts the keeper, and `--ei override_seconds 5`
+shortens an override for an expiry test. A no-control window is set in minutes past midnight (`-1` clears it):
 
 ```sh
 adb shell am broadcast -a com.gathin.kidsmode.ADMIN -n com.gathin.kidsmode/.KidsAdminReceiver \
   --ei unmanaged_start_min 1080 --ei unmanaged_end_min 1200   # 18:00 to 20:00
 ```
 
-## Permissions and data
+## Permissions
 
+- `WRITE_SECURE_SETTINGS`: a development permission, granted once over ADB. It lets the add-on put its own
+  accessibility service back after the firmware force-stops it. Without it the guard row opens the
+  Accessibility settings and everything else still works.
+- `RECEIVE_BOOT_COMPLETED`: starts the keeper and restores the guard after a power cycle.
+- `FOREGROUND_SERVICE`: keeps the add-on's process alive while kids mode is on; the low-priority
+  "Kids mode is on" notification is this keeper.
 - Accessibility service: draws the accessibility overlay and receives screen on/off. It retrieves no window
   content and filters no keys.
+
+## Data
+
 - No network, storage, analytics or telemetry. State is private SharedPreferences; the PIN is a salted
   SHA-256 hash.
 - This is app-level parental control, not a tamper-proof kiosk: someone with access to the TV's system settings

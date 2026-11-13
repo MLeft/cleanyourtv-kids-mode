@@ -1,8 +1,11 @@
 package com.gathin.kidsmode;
 
+import android.Manifest;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Base64;
@@ -14,6 +17,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -449,6 +454,95 @@ final class KidsStore {
         ComponentName component = new ComponentName(c, KidsGuardService.class);
         return enabled.contains(component.flattenToString())
                 || enabled.contains(component.flattenToShortString());
+    }
+
+    private static final Object GUARD_LOCK = new Object();
+    private static volatile boolean repairingGuard;
+
+    static boolean isGuardEnabled(Context c) {
+        return isAccessibilityEnabled(c);
+    }
+
+    /**
+     * Puts the guard back on the enabled accessibility list, cycling add/remove/add so Android
+     * drops the "crashed" mark a force stop leaves behind. Returns false only when
+     * WRITE_SECURE_SETTINGS is missing, so the caller can open Accessibility settings instead.
+     */
+    static boolean ensureGuard(Context c) {
+        if (c.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS)
+                != PackageManager.PERMISSION_GRANTED) return false;
+        if (isAccessibilityEnabled(c) && KidsGuardService.isConnected()) return true;
+        synchronized (GUARD_LOCK) {
+            if (repairingGuard) return true;
+            repairingGuard = true;
+            Context app = c.getApplicationContext();
+            new Thread(() -> {
+                try {
+                    repairGuard(app);
+                } finally {
+                    repairingGuard = false;
+                }
+            }, "KidsGuardRepair").start();
+        }
+        return true;
+    }
+
+    /**
+     * Two cycles at most: the first usually rebinds the guard. The waits let Android see each
+     * list write; a list changed by someone else in between makes replaceList abort and the
+     * keeper tries again on its next tick.
+     */
+    private static void repairGuard(Context c) {
+        ContentResolver cr = c.getContentResolver();
+        ComponentName guard = new ComponentName(c, KidsGuardService.class);
+        for (int attempt = 0; attempt < 2; attempt++) {
+            String current = enabledList(cr);
+            String without = withoutGuard(current, guard);
+            String with = withGuard(without, guard);
+            if (!replaceList(cr, current, with)) continue;
+            sleep(900);
+            if (!replaceList(cr, with, without)) continue;
+            sleep(900);
+            if (!replaceList(cr, without, with)) continue;
+            Settings.Secure.putInt(cr, Settings.Secure.ACCESSIBILITY_ENABLED, 1);
+            sleep(1200);
+            if (KidsGuardService.isConnected()) return;
+        }
+    }
+
+    private static String enabledList(ContentResolver cr) {
+        String value = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        return value == null ? "" : value;
+    }
+
+    private static String withoutGuard(String list, ComponentName guard) {
+        String full = guard.flattenToString();
+        String shortName = guard.flattenToShortString();
+        StringBuilder out = new StringBuilder();
+        for (String entry : list.split(":")) {
+            if (entry.isEmpty() || entry.equals(full) || entry.equals(shortName)) continue;
+            if (out.length() > 0) out.append(':');
+            out.append(entry);
+        }
+        return out.toString();
+    }
+
+    private static String withGuard(String list, ComponentName guard) {
+        String full = guard.flattenToString();
+        return list.isEmpty() ? full : list + ":" + full;
+    }
+
+    private static boolean replaceList(ContentResolver cr, String expected, String updated) {
+        return enabledList(cr).equals(expected)
+                && Settings.Secure.putString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, updated);
+    }
+
+    private static void sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /** The line shown in the launcher's top-bar entry and at the top of the settings screen. */

@@ -4,6 +4,14 @@
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
+    <!-- The guard starts itself again after a power cycle: a boot receiver and a foreground keeper,
+         and the enabled-accessibility setting written directly. WRITE_SECURE_SETTINGS is a
+         development permission, granted once over ADB (see the README); without it the add-on
+         falls back to the Accessibility settings screen. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
     <application
         android:allowBackup="false"
         android:banner="@drawable/ic_kids"
@@ -59,5 +67,32 @@
                 <action android:name="com.gathin.kidsmode.ADMIN" />
             </intent-filter>
         </receiver>
+
+        <!-- After a power cycle MIUI force-stops the add-on and takes its accessibility service off
+             the enabled list. This receiver puts both the keeper and the guard back; USER_UNLOCKED
+             covers a set that boots straight into a locked user. -->
+        <receiver
+            android:name=".KidsBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.USER_UNLOCKED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- A low-priority foreground notification keeps the process alive while kids mode is on,
+             so the guard can notice a dropped accessibility service and put it back. -->
+        <service
+            android:name=".KidsGuardKeeper"
+            android:exported="false"
+            android:stopWithTask="false" />
+
+        <!-- JobScheduler is the last layer: a persisted 15-minute job restarts the keeper even if
+             MIUI killed the process while the TV was on. -->
+        <service
+            android:name=".KidsGuardJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
     </application>
 </manifest>

@@ -28,6 +28,10 @@
     <string name="kids_hint">The timer runs while the TV screen is on. Turning the TV off for at least the rest time starts a new session. The daily total resets at midnight. Inside the no-control hours the timer pauses, no lock appears and the app library opens without the PIN; a window that ends earlier than it starts runs past midnight. A parent PIN can grant extra viewing time after any lock, and the same PIN is needed to change these settings.</string>
     <string name="kids_service_on">Guard service: on</string>
     <string name="kids_service_off">Guard service: off (tap to enable)</string>
+    <string name="kids_guard_starting">Starting the guard service…</string>
+    <string name="kids_keeper_channel">Kids mode guard</string>
+    <string name="kids_keeper_title">Kids mode is on</string>
+    <string name="kids_keeper_text">The guard is running, so the timer and lock stay ready.</string>
     <string name="kids_auth_title">Open the app library</string>
     <string name="kids_auth_hint">Parent verification. The app library opens without a PIN for %1$d minutes after this.</string>
     <string name="kids_auth_hint_always">Parent verification is needed every time.</string>

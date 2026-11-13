@@ -41,7 +41,7 @@ public final class KidsGuardService extends AccessibilityService {
     private TextView lockHint;
     private KidsPinView pinView;
     private LinearLayout overrideMenu;
-    private boolean connected;
+    private static volatile boolean connected;
     private boolean screenOn;
     private int lockState = KidsStore.LOCK_NONE;
     private long lastTickElapsed;
@@ -118,6 +118,11 @@ public final class KidsGuardService extends AccessibilityService {
         lastTickElapsed = SystemClock.elapsedRealtime();
         handler.removeCallbacks(tick);
         handler.post(tick);
+        if (KidsStore.isEnabled(this)) KidsGuardKeeper.start(this);
+    }
+
+    static boolean isConnected() {
+        return connected;
     }
 
     @Override
@@ -316,6 +321,7 @@ public final class KidsGuardService extends AccessibilityService {
         });
         overlay.findViewById(R.id.kidsDisableMode).setOnClickListener(v -> {
             KidsStore.setEnabled(this, false);
+            KidsGuardKeeper.stop(this);
             hideLock();
             Toast.makeText(this, getString(R.string.kids_disabled_toast), Toast.LENGTH_SHORT).show();
         });
