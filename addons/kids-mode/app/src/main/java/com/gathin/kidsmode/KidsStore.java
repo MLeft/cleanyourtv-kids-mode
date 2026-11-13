@@ -41,10 +41,13 @@ final class KidsStore {
     static final int UNMANAGED_OFF = -1;
     static final int MINUTES_PER_DAY = 24 * 60;
     static final int UNMANAGED_STEP_MIN = 30;
+    /** A no-watching window: the child may not watch at all, whatever is left today. */
+    static final int BLOCKED_OFF = -1;
 
     static final int LOCK_NONE = 0;
     static final int LOCK_SESSION = 1;
     static final int LOCK_DAILY = 2;
+    static final int LOCK_BLOCKED = 3;
 
     static final int PIN_OK = 0;
     static final int PIN_WRONG = 1;
@@ -68,6 +71,8 @@ final class KidsStore {
     private static final String KEY_LIBRARY_GRACE_UNTIL = "library_grace_until";
     private static final String KEY_UNMANAGED_START = "unmanaged_start_min";
     private static final String KEY_UNMANAGED_END = "unmanaged_end_min";
+    private static final String KEY_BLOCKED_START = "blocked_start_min";
+    private static final String KEY_BLOCKED_END = "blocked_end_min";
 
     /** Set while the settings screen is in front; the guard neither counts nor locks then. */
     static volatile boolean settingsOpen;
@@ -187,9 +192,69 @@ final class KidsStore {
      */
     static boolean isUnmanagedNow(Context c, long nowWall) {
         if (!isEnabled(c) || !hasUnmanagedWindow(c)) return false;
-        int start = unmanagedStartMin(c);
-        int end = unmanagedEndMin(c);
-        int now = minuteOfDay(nowWall);
+        return inWindow(unmanagedStartMin(c), unmanagedEndMin(c), minuteOfDay(nowWall));
+    }
+
+    static int blockedStartMin(Context c) {
+        return prefs(c).getInt(KEY_BLOCKED_START, BLOCKED_OFF);
+    }
+
+    static int blockedEndMin(Context c) {
+        return prefs(c).getInt(KEY_BLOCKED_END, BLOCKED_OFF);
+    }
+
+    static boolean hasBlockedWindow(Context c) {
+        int start = blockedStartMin(c);
+        int end = blockedEndMin(c);
+        return start >= 0 && end >= 0 && start != end;
+    }
+
+    /** -1 turns the window off; a real start keeps the end, or defaults to two hours later. */
+    static void setBlockedStart(Context c, int minuteOfDay) {
+        if (minuteOfDay < 0 || minuteOfDay >= MINUTES_PER_DAY) {
+            prefs(c).edit()
+                    .putInt(KEY_BLOCKED_START, BLOCKED_OFF)
+                    .putInt(KEY_BLOCKED_END, BLOCKED_OFF)
+                    .apply();
+            return;
+        }
+        SharedPreferences.Editor editor = prefs(c).edit().putInt(KEY_BLOCKED_START, minuteOfDay);
+        int end = blockedEndMin(c);
+        if (end < 0 || end == minuteOfDay) {
+            editor.putInt(KEY_BLOCKED_END, (minuteOfDay + 120) % MINUTES_PER_DAY);
+        }
+        editor.apply();
+    }
+
+    static void setBlockedEnd(Context c, int minuteOfDay) {
+        int start = blockedStartMin(c);
+        if (start < 0) return;
+        if (minuteOfDay < 0 || minuteOfDay >= MINUTES_PER_DAY) return;
+        if (minuteOfDay == start) return;
+        prefs(c).edit().putInt(KEY_BLOCKED_END, minuteOfDay).apply();
+    }
+
+    /**
+     * True inside the no-watching window. This wins over the no-control window, so an explicit
+     * block is never cancelled by free time. A start equal to the end means it is off.
+     */
+    static boolean isBlockedNow(Context c, long nowWall) {
+        if (!isEnabled(c) || !hasBlockedWindow(c)) return false;
+        return inWindow(blockedStartMin(c), blockedEndMin(c), minuteOfDay(nowWall));
+    }
+
+    /** Milliseconds until the blocked window ends; 0 when it is not running. */
+    static long blockedRemainingMs(Context c, long nowWall) {
+        if (!isBlockedNow(c, nowWall)) return 0;
+        LocalTime time = Instant.ofEpochMilli(nowWall).atZone(ZoneId.systemDefault()).toLocalTime();
+        int nowSeconds = time.toSecondOfDay();
+        int endSeconds = blockedEndMin(c) * 60;
+        int diff = endSeconds - nowSeconds;
+        if (diff <= 0) diff += 24 * 60 * 60;
+        return diff * 1000L;
+    }
+
+    private static boolean inWindow(int start, int end, int now) {
         if (start < end) return now >= start && now < end;
         return now >= start || now < end;
     }
@@ -377,6 +442,8 @@ final class KidsStore {
                 .putInt(KEY_LIBRARY_GRACE_MIN, DEFAULT_LIBRARY_GRACE_MIN)
                 .putInt(KEY_UNMANAGED_START, UNMANAGED_OFF)
                 .putInt(KEY_UNMANAGED_END, UNMANAGED_OFF)
+                .putInt(KEY_BLOCKED_START, BLOCKED_OFF)
+                .putInt(KEY_BLOCKED_END, BLOCKED_OFF)
                 .putInt(KEY_FAIL_COUNT, 0)
                 .putLong(KEY_FAIL_UNTIL, 0)
                 .putLong(KEY_LIBRARY_GRACE_UNTIL, 0)
@@ -401,6 +468,8 @@ final class KidsStore {
         if (!isEnabled(c)) return LOCK_NONE;
         SharedPreferences p = prefs(c);
         if (p.getLong(KEY_OVERRIDE_REMAINING, 0) > 0) return LOCK_NONE;
+        // A no-watching window wins even over free time, and does not need a spent quota.
+        if (isBlockedNow(c, nowWall)) return LOCK_BLOCKED;
         // Free time: no lock even when a limit was already reached; the guard pauses the clock too.
         if (isUnmanagedNow(c, nowWall)) return LOCK_NONE;
 
@@ -552,6 +621,11 @@ final class KidsStore {
         }
         if (!isEnabled(c)) {
             return c.getString(R.string.kids_enabled_choice, c.getString(R.string.kids_off));
+        }
+        if (isBlockedNow(c, System.currentTimeMillis())) {
+            return c.getString(R.string.kids_enabled_choice,
+                    c.getString(R.string.kids_blocked_short,
+                            formatClock(blockedEndMin(c))));
         }
         if (isUnmanagedNow(c, System.currentTimeMillis())) {
             return c.getString(R.string.kids_enabled_choice,

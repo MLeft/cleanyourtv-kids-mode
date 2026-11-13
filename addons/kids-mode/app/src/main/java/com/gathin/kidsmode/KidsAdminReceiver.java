@@ -69,6 +69,12 @@ public final class KidsAdminReceiver extends BroadcastReceiver {
         if (intent.hasExtra("unmanaged_end_min")) {
             KidsStore.setUnmanagedEnd(context, intent.getIntExtra("unmanaged_end_min", -1));
         }
+        if (intent.hasExtra("blocked_start_min")) {
+            KidsStore.setBlockedStart(context, intent.getIntExtra("blocked_start_min", -1));
+        }
+        if (intent.hasExtra("blocked_end_min")) {
+            KidsStore.setBlockedEnd(context, intent.getIntExtra("blocked_end_min", -1));
+        }
         if (intent.getBooleanExtra("open", false)) {
             Intent open = new Intent(context, KidsModeActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

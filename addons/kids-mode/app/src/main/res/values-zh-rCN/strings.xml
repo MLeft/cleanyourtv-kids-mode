@@ -25,7 +25,7 @@
     <string name="kids_usage">今日已看 %1$d 分钟 · 剩余 %2$s；本次已看 %3$d 分钟。</string>
     <string name="kids_usage_unlimited">今日已看 %1$d 分钟（每日不限）；本次已看 %2$d 分钟。</string>
     <string name="kids_usage_short">今日剩余 %1$d 分钟</string>
-    <string name="kids_hint">电视亮着就计时；关闭电视超过“超时后等待”的时长，再打开算新的一次观看。每日 0 点重置。在“不管控”时段内不计时、不锁定，应用库也无需家长密码；结束时间早于开始时间时，该时段跨过 0 点。任何超时锁定都可以输入家长密码临时授权，授权到期后会再次锁定；再次延长需再次验证密码并选择倒计时时长。</string>
+    <string name="kids_hint">电视亮着就计时；关闭电视超过“超时后等待”的时长，再打开算新的一次观看。每日 0 点重置。在“不管控”时段内不计时、不锁定，应用库也无需家长密码；结束时间早于开始时间时，该时段跨过 0 点。在“禁看”时段内即使还有剩余时长也会锁定，且禁看优先于不管控。任何超时锁定都可以输入家长密码临时授权，授权到期后会再次锁定；再次延长需再次验证密码并选择倒计时时长。</string>
     <string name="kids_service_on">守护服务：已开启</string>
     <string name="kids_service_off">守护服务：未开启（点击开启）</string>
     <string name="kids_guard_starting">正在启用守护服务…</string>
@@ -45,6 +45,11 @@
     <string name="kids_unmanaged_end_title">不管控结束时间</string>
     <string name="kids_unmanaged_off">关闭</string>
     <string name="kids_unmanaged_short">%1$s 前不管控</string>
+    <string name="kids_blocked_start_state">禁看开始：%1$s</string>
+    <string name="kids_blocked_end_state">禁看结束：%1$s</string>
+    <string name="kids_blocked_start_title">禁看开始时间</string>
+    <string name="kids_blocked_end_title">禁看结束时间</string>
+    <string name="kids_blocked_short">%1$s 前禁看</string>
 
     <string name="kids_pin_title">家长密码</string>
     <string name="kids_pin_enter">请输入家长密码</string>
@@ -66,6 +71,8 @@
     <string name="kids_lock_session_message">请休息一下，%1$s 后可继续观看。</string>
     <string name="kids_lock_daily_title">今天的观看时间已用完</string>
     <string name="kids_lock_daily_message">明天 0 点后可继续（还有 %1$s）。</string>
+    <string name="kids_lock_blocked_title">现在不能观看</string>
+    <string name="kids_lock_blocked_message">现在为禁看时段，%1$s 后可继续观看。</string>
     <string name="kids_lock_pin_hint">家长可输入密码临时授权继续观看。</string>
     <string name="kids_override_title">家长验证成功</string>
     <string name="kids_override_pick">选择临时授权时长</string>

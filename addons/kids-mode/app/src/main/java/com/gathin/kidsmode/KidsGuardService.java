@@ -197,7 +197,9 @@ public final class KidsGuardService extends AccessibilityService {
         lockState = reason;
         if (changed) {
             lockTitle.setText(reason == KidsStore.LOCK_DAILY
-                    ? R.string.kids_lock_daily_title : R.string.kids_lock_session_title);
+                    ? R.string.kids_lock_daily_title
+                    : reason == KidsStore.LOCK_BLOCKED
+                    ? R.string.kids_lock_blocked_title : R.string.kids_lock_session_title);
             lockTitle.setVisibility(View.VISIBLE);
             lockMessage.setVisibility(View.VISIBLE);
             lockCountdown.setVisibility(View.VISIBLE);
@@ -249,6 +251,11 @@ public final class KidsGuardService extends AccessibilityService {
             long left = Math.max(0, KidsStore.midnightWall() - nowWall);
             String text = KidsStore.formatDuration(left);
             lockMessage.setText(getString(R.string.kids_lock_daily_message, text));
+            lockCountdown.setText(text);
+        } else if (lockState == KidsStore.LOCK_BLOCKED) {
+            long left = KidsStore.blockedRemainingMs(this, nowWall);
+            String text = KidsStore.formatDuration(left);
+            lockMessage.setText(getString(R.string.kids_lock_blocked_message, text));
             lockCountdown.setText(text);
         }
     }

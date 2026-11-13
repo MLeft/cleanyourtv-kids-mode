@@ -13,6 +13,9 @@ Session and daily screen-time limits with a parent PIN, built as an optional add
 - **No-control window**: a start and an end time, set on a 30-minute step, during which the timer pauses, no
   lock appears and the launcher's app library opens without the PIN. A window that ends earlier than it starts
   crosses midnight (22:00 to 07:00). Off by default; the summary reads “No control until 20:00” while it runs.
+- **No-watching window**: a start and an end time during which the TV locks even with time left today, with a
+  “No watching now” countdown; the parent PIN can still grant an override. An overnight window works, and this
+  block wins over the no-control window.
 - **Parent PIN**: four digits, stored as a salted SHA-256 hash. The PIN gates the settings screen and unlocks
   any lock. Five wrong entries lock the keypad for 60 seconds.
 - **Self-healing guard**: a foreground keeper, a boot receiver and a persisted 15-minute job put the guard's
@@ -29,7 +32,8 @@ Session and daily screen-time limits with a parent PIN, built as an optional add
 - The timer runs while the TV screen is on. Turning the TV off for at least the configured rest starts a new
   session; the override countdown pauses while the screen is off.
 - Settings ranges: session 0/15/20/30/45/60/90 min, rest 5/10/15/20/30/45/60 min, daily
-  0/30/60/90/120/180/240 min (0 = unlimited); the no-control window runs from 00:00 to 23:30 in 30-minute steps.
+  0/30/60/90/120/180/240 min (0 = unlimited); the no-control and no-watching windows run from 00:00 to 23:30
+  in 30-minute steps.
 
 ## Install
 
@@ -84,6 +88,13 @@ shortens an override for an expiry test. A no-control window is set in minutes p
 ```sh
 adb shell am broadcast -a com.gathin.kidsmode.ADMIN -n com.gathin.kidsmode/.KidsAdminReceiver \
   --ei unmanaged_start_min 1080 --ei unmanaged_end_min 1200   # 18:00 to 20:00
+```
+
+The no-watching window uses the same minutes-past-midnight form; this example blocks 21:00 to 07:00:
+
+```sh
+adb shell am broadcast -a com.gathin.kidsmode.ADMIN -n com.gathin.kidsmode/.KidsAdminReceiver \
+  --ei blocked_start_min 1260 --ei blocked_end_min 420
 ```
 
 ## Permissions

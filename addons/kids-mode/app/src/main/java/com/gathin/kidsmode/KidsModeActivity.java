@@ -23,6 +23,8 @@ public final class KidsModeActivity extends Activity {
     private TextView sessionChoice;
     private TextView waitChoice;
     private TextView dailyChoice;
+    private TextView blockedStartChoice;
+    private TextView blockedEndChoice;
     private TextView unmanagedStartChoice;
     private TextView unmanagedEndChoice;
     private TextView libraryGraceChoice;
@@ -81,6 +83,8 @@ public final class KidsModeActivity extends Activity {
         sessionChoice = findViewById(R.id.sessionLimitChoice);
         waitChoice = findViewById(R.id.waitLimitChoice);
         dailyChoice = findViewById(R.id.dailyLimitChoice);
+        blockedStartChoice = findViewById(R.id.blockedStartChoice);
+        blockedEndChoice = findViewById(R.id.blockedEndChoice);
         unmanagedStartChoice = findViewById(R.id.unmanagedStartChoice);
         unmanagedEndChoice = findViewById(R.id.unmanagedEndChoice);
         libraryGraceChoice = findViewById(R.id.libraryGraceChoice);
@@ -97,6 +101,8 @@ public final class KidsModeActivity extends Activity {
         dailyChoice.setOnClickListener(v -> showChoice(R.string.kids_daily_limit,
                 KidsStore.DAILY_OPTIONS, KidsStore.dailyLimitMin(this),
                 value -> KidsStore.setDailyLimit(this, value)));
+        blockedStartChoice.setOnClickListener(v -> showBlockedStartChoice());
+        blockedEndChoice.setOnClickListener(v -> showBlockedEndChoice());
         unmanagedStartChoice.setOnClickListener(v -> showUnmanagedStartChoice());
         unmanagedEndChoice.setOnClickListener(v -> showUnmanagedEndChoice());
         libraryGraceChoice.setOnClickListener(v -> showGraceChoice());
@@ -167,6 +173,18 @@ public final class KidsModeActivity extends Activity {
         sessionChoice.setText(getString(R.string.kids_session_limit_state, formatMinutes(session)));
         waitChoice.setText(getString(R.string.kids_wait_limit_state, formatMinutes(wait)));
         dailyChoice.setText(getString(R.string.kids_daily_limit_state, formatMinutes(daily)));
+
+        int blockedStart = KidsStore.blockedStartMin(this);
+        boolean blockedOn = blockedStart >= 0;
+        blockedStartChoice.setText(getString(R.string.kids_blocked_start_state,
+                blockedOn ? KidsStore.formatClock(blockedStart)
+                        : getString(R.string.kids_unmanaged_off)));
+        blockedEndChoice.setText(getString(R.string.kids_blocked_end_state,
+                blockedOn ? KidsStore.formatClock(KidsStore.blockedEndMin(this))
+                        : getString(R.string.kids_unmanaged_off)));
+        blockedEndChoice.setEnabled(blockedOn);
+        blockedEndChoice.setFocusable(blockedOn);
+        blockedEndChoice.setAlpha(blockedOn ? 1f : 0.5f);
 
         int unmanagedStart = KidsStore.unmanagedStartMin(this);
         boolean unmanagedOn = unmanagedStart >= 0;
@@ -252,51 +270,64 @@ public final class KidsModeActivity extends Activity {
 
     /** "Off" plus a time every half hour; a picked start seeds an end two hours later. */
     private void showUnmanagedStartChoice() {
-        int step = KidsStore.UNMANAGED_STEP_MIN;
-        int[] options = new int[KidsStore.MINUTES_PER_DAY / step + 1];
-        String[] labels = new String[options.length];
-        options[0] = KidsStore.UNMANAGED_OFF;
-        labels[0] = getString(R.string.kids_unmanaged_off);
-        int current = KidsStore.unmanagedStartMin(this);
-        int checked = 0;
-        for (int i = 1; i < options.length; i++) {
-            options[i] = (i - 1) * step;
-            labels[i] = KidsStore.formatClock(options[i]);
-            if (options[i] == current) checked = i;
-        }
-        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
-                .setTitle(R.string.kids_unmanaged_start_title)
-                .setSingleChoiceItems(labels, checked, (d, which) -> {
-                    d.dismiss();
-                    KidsStore.setUnmanagedStart(this, options[which]);
-                    refresh();
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .create();
-        showCentered(dialog, 560, scrollTo(dialog, checked));
+        showClockChoice(R.string.kids_unmanaged_start_title, KidsStore.unmanagedStartMin(this),
+                KidsStore.UNMANAGED_OFF, -1, value -> KidsStore.setUnmanagedStart(this, value));
     }
 
     /** Every half-hour value except the start, so the window never becomes empty. */
     private void showUnmanagedEndChoice() {
         int start = KidsStore.unmanagedStartMin(this);
         if (start < 0) return;
+        showClockChoice(R.string.kids_unmanaged_end_title, KidsStore.unmanagedEndMin(this),
+                Integer.MIN_VALUE, start, value -> KidsStore.setUnmanagedEnd(this, value));
+    }
+
+    private void showBlockedStartChoice() {
+        showClockChoice(R.string.kids_blocked_start_title, KidsStore.blockedStartMin(this),
+                KidsStore.BLOCKED_OFF, -1, value -> KidsStore.setBlockedStart(this, value));
+    }
+
+    private void showBlockedEndChoice() {
+        int start = KidsStore.blockedStartMin(this);
+        if (start < 0) return;
+        showClockChoice(R.string.kids_blocked_end_title, KidsStore.blockedEndMin(this),
+                Integer.MIN_VALUE, start, value -> KidsStore.setBlockedEnd(this, value));
+    }
+
+    /**
+     * A single-choice time dialog on a 30-minute grid. offValue adds an "Off" row;
+     * excludeMinute leaves out the other end's value, so a window never becomes empty.
+     */
+    private void showClockChoice(int titleRes, int current, int offValue, int excludeMinute,
+                                 Consumer<Integer> onPick) {
         int step = KidsStore.UNMANAGED_STEP_MIN;
-        int[] options = new int[KidsStore.MINUTES_PER_DAY / step - 1];
+        int count = 0;
+        for (int minute = 0; minute < KidsStore.MINUTES_PER_DAY; minute += step) {
+            if (minute != excludeMinute) count++;
+        }
+        boolean allowOff = offValue != Integer.MIN_VALUE;
+        int[] options = new int[count + (allowOff ? 1 : 0)];
         String[] labels = new String[options.length];
-        int current = KidsStore.unmanagedEndMin(this);
+        int index = 0;
         int checked = 0;
-        for (int i = 0, minute = 0; minute < KidsStore.MINUTES_PER_DAY; minute += step) {
-            if (minute == start) continue;
-            options[i] = minute;
-            labels[i] = KidsStore.formatClock(minute);
-            if (minute == current) checked = i;
-            i++;
+        if (allowOff) {
+            options[index] = offValue;
+            labels[index] = getString(R.string.kids_unmanaged_off);
+            if (current == offValue) checked = index;
+            index++;
+        }
+        for (int minute = 0; minute < KidsStore.MINUTES_PER_DAY; minute += step) {
+            if (minute == excludeMinute) continue;
+            options[index] = minute;
+            labels[index] = KidsStore.formatClock(minute);
+            if (current == minute) checked = index;
+            index++;
         }
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
-                .setTitle(R.string.kids_unmanaged_end_title)
+                .setTitle(titleRes)
                 .setSingleChoiceItems(labels, checked, (d, which) -> {
                     d.dismiss();
-                    KidsStore.setUnmanagedEnd(this, options[which]);
+                    onPick.accept(options[which]);
                     refresh();
                 })
                 .setNegativeButton(android.R.string.cancel, null)

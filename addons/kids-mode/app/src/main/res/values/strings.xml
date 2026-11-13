@@ -25,7 +25,7 @@
     <string name="kids_usage">Today: %1$d min used · %2$s left. This session: %3$d min.</string>
     <string name="kids_usage_unlimited">Today: %1$d min used (no daily limit). This session: %2$d min.</string>
     <string name="kids_usage_short">%1$d min left today</string>
-    <string name="kids_hint">The timer runs while the TV screen is on. Turning the TV off for at least the rest time starts a new session. The daily total resets at midnight. Inside the no-control hours the timer pauses, no lock appears and the app library opens without the PIN; a window that ends earlier than it starts runs past midnight. A parent PIN can grant extra viewing time after any lock, and the same PIN is needed to change these settings.</string>
+    <string name="kids_hint">The timer runs while the TV screen is on. Turning the TV off for at least the rest time starts a new session. The daily total resets at midnight. Inside the no-control hours the timer pauses, no lock appears and the app library opens without the PIN; a window that ends earlier than it starts runs past midnight. In the no-watching hours the TV locks even with time left, and that block wins over the no-control window. A parent PIN can grant extra viewing time after any lock, and the same PIN is needed to change these settings.</string>
     <string name="kids_service_on">Guard service: on</string>
     <string name="kids_service_off">Guard service: off (tap to enable)</string>
     <string name="kids_guard_starting">Starting the guard service…</string>
@@ -45,6 +45,11 @@
     <string name="kids_unmanaged_end_title">No control until</string>
     <string name="kids_unmanaged_off">Off</string>
     <string name="kids_unmanaged_short">No control until %1$s</string>
+    <string name="kids_blocked_start_state">Block from: %1$s</string>
+    <string name="kids_blocked_end_state">Block until: %1$s</string>
+    <string name="kids_blocked_start_title">Block from</string>
+    <string name="kids_blocked_end_title">Block until</string>
+    <string name="kids_blocked_short">Blocked until %1$s</string>
 
     <string name="kids_pin_title">Parent PIN</string>
     <string name="kids_pin_enter">Enter the parent PIN</string>
@@ -66,6 +71,8 @@
     <string name="kids_lock_session_message">Take a break. You can watch again in %1$s.</string>
     <string name="kids_lock_daily_title">Today\'s viewing time is used up</string>
     <string name="kids_lock_daily_message">Come back after midnight (in %1$s).</string>
+    <string name="kids_lock_blocked_title">No watching now</string>
+    <string name="kids_lock_blocked_message">This is a no-watching time. You can watch again in %1$s.</string>
     <string name="kids_lock_pin_hint">A parent can enter the PIN to allow more time.</string>
     <string name="kids_override_title">Parent verified</string>
     <string name="kids_override_pick">Choose extra viewing time</string>

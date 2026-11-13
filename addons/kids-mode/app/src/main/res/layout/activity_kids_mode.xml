@@ -42,6 +42,16 @@
             android:layout_marginTop="10dp" />
 
         <TextView
+            android:id="@+id/blockedStartChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/blockedEndChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="10dp" />
+
+        <TextView
             android:id="@+id/unmanagedStartChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="10dp" />
