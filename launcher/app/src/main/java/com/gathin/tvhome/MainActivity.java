@@ -1906,7 +1906,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (kidsGuardObserver != null) return;
         kidsGuardObserver = new ContentObserver(handler) {
             @Override public void onChange(boolean selfChange) {
-                ServiceRepair.restoreKidsGuard(MainActivity.this);
+                // The add-on's own repair writes the list three times; reacting to the middle
+                // write would fight it and unbind the guard (and its lock) in a loop.
+                handler.removeCallbacks(kidsGuardRestore);
+                handler.postDelayed(kidsGuardRestore, 4000);
             }
         };
         getContentResolver().registerContentObserver(
@@ -1917,6 +1920,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void stopWatchingKidsGuard() {
         if (kidsGuardObserver == null) return;
+        handler.removeCallbacks(kidsGuardRestore);
         getContentResolver().unregisterContentObserver(kidsGuardObserver);
         kidsGuardObserver = null;
     }
@@ -3174,6 +3178,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      *  seconds after its power-off force stop, sometimes after Home has already put it back, and it
      *  can land while another app is in front. */
     private ContentObserver kidsGuardObserver;
+    /** Debounced after an accessibility list change; see watchKidsGuard. */
+    private final Runnable kidsGuardRestore = () -> ServiceRepair.restoreKidsGuard(this);
     private String reopenLibraryPackage;
     private int reopenLibraryPosition;
     private int reopenLibraryFirst = RecyclerView.NO_POSITION;
