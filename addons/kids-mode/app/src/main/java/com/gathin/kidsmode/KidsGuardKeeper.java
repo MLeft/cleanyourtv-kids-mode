@@ -32,8 +32,10 @@ public final class KidsGuardKeeper extends Service {
                 stopSelf();
                 return;
             }
-            if (!KidsStore.isAccessibilityEnabled(KidsGuardKeeper.this)
-                    || !KidsGuardService.isConnected()) {
+            // Repair only a guard that is off the list. A guard that is on the list but still
+            // binding must not be cycled: that would unbind it, hide the lock and start another
+            // repair from the launcher's observer.
+            if (!KidsStore.isAccessibilityEnabled(KidsGuardKeeper.this)) {
                 KidsStore.ensureGuard(KidsGuardKeeper.this);
             }
             handler.postDelayed(this, TICK_MS);
