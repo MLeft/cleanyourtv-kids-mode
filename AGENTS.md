@@ -114,6 +114,8 @@ use it and ends with the check to run.
 - [`translation.md`](docs/workflows/translation.md): add a launcher language, or fill strings missing from one.
 - [`theme.md`](docs/workflows/theme.md): add a theme from existing keys, with its screenshot from a real TV.
 - [`addon.md`](docs/workflows/addon.md): add a module-card app that never touches `launcher/`.
+- [`launcher-first-class.md`](docs/workflows/launcher-first-class.md): keep Home and the kids guard
+  first-class on this fork's MiTV-ANSP0.
 - [`showcase.md`](docs/workflows/showcase.md): list a project that lives in its own repository.
 - [`press.md`](docs/workflows/press.md): add an article and update the four press counts.
 - [`docs-notes.md`](docs/workflows/docs-notes.md): add a troubleshooting entry or a `PROMPT.md` fix, keeping pinned facts.
