@@ -26,17 +26,26 @@ public class GuardRevival extends NotificationListenerService {
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     stopWaiting();
-                    GuardKeep.ensureHomeKey(GuardRevival.this);
+                    onReady();
                 }
             };
             registerReceiver(unlocked, new IntentFilter(Intent.ACTION_USER_UNLOCKED));
             if (users.isUserUnlocked()) {
                 stopWaiting();
-                GuardKeep.ensureHomeKey(this);
+                onReady();
             }
             return;
         }
+        onReady();
+    }
+
+    /** Home comes back after MIUI's kill; the kids guard comes back with it, even if the stock
+     *  launcher is still in front, because a notification listener is approved across a force stop. */
+    private void onReady() {
         GuardKeep.ensureHomeKey(this);
+        if (getResources().getBoolean(R.bool.restore_kids_guard)) {
+            ServiceRepair.restoreKidsGuard(this);
+        }
     }
 
     private void stopWaiting() {
